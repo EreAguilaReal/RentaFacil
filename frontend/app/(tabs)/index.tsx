@@ -58,12 +58,12 @@ const TarjetaDepa = ({ item }: { item: any }) => (
   <TouchableOpacity style={styles.tarjeta} activeOpacity={0.85}>
     <Image source={{ uri: item.imagen }} style={styles.tarjetaImagen} />
     <View style={styles.tarjetaBadgeContainer}>
-      {item.soloMujeres && (
+      {item.tipo_renta === 'solo_mujeres' && (
         <View style={[styles.badge, { backgroundColor: "#ff6b9d" }]}>
           <Text style={styles.badgeTexto}>Solo mujeres</Text>
         </View>
       )}
-      {item.petfriendly && (
+      {item.pet_friendly && (
         <View style={[styles.badge, { backgroundColor: "#4caf50" }]}>
           <Text style={styles.badgeTexto}>Pet friendly</Text>
         </View>
@@ -78,7 +78,7 @@ const TarjetaDepa = ({ item }: { item: any }) => (
       </Text>
       <View style={styles.tarjetaMetro}>
         <Text style={styles.tarjetaMetroTexto}>
-          🚇 {item.metrosCercanos[0]}
+          🚇 {item.metro_cercano}
         </Text>
       </View>
       <View style={styles.tarjetaFooter}>
