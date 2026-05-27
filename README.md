@@ -23,7 +23,7 @@ Instala lo siguiente antes de empezar:
 ### 1. Clonar el repositorio
 
 ```bash
-git clone https://github.com/TuUsuario/RentaFacil.git
+git clone https://github.com/EreAguilaReal/RentaFacil.git
 cd RentaFacil
 ```
 
