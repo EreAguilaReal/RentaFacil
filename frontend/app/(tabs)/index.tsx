@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import {
   Dimensions,
   FlatList,
@@ -13,72 +13,9 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { obtenerDepartamentos } from '../../services/api';
 
 const { width } = Dimensions.get("window");
-
-// ── Datos de ejemplo ──────────────────────────────────────────────
-const ANUNCIOS = [
-  {
-    id: "1",
-    titulo: "Depa amplio en Coyoacán",
-    precio: 6500,
-    colonia: "Del Carmen, Coyoacán",
-    cuartos: 2,
-    imagen: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=600",
-    amueblado: true,
-    petfriendly: false,
-    soloMujeres: true,
-    internet: true,
-    estacionamiento: false,
-    cocina: true,
-    metrosCercanos: ["Viveros", "Miguel Ángel de Quevedo"],
-  },
-  {
-    id: "2",
-    titulo: "Habitación en Doctores",
-    precio: 3800,
-    colonia: "Doctores, Cuauhtémoc",
-    cuartos: 1,
-    imagen: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600",
-    amueblado: true,
-    petfriendly: true,
-    soloMujeres: false,
-    internet: true,
-    estacionamiento: false,
-    cocina: true,
-    metrosCercanos: ["Doctores", "Niños Héroes"],
-  },
-  {
-    id: "3",
-    titulo: "Studio moderno en Narvarte",
-    precio: 8200,
-    colonia: "Narvarte Poniente, Benito Juárez",
-    cuartos: 1,
-    imagen: "https://images.unsplash.com/photo-1484154218962-a197022b5858?w=600",
-    amueblado: true,
-    petfriendly: true,
-    soloMujeres: false,
-    internet: true,
-    estacionamiento: true,
-    cocina: true,
-    metrosCercanos: ["Etiopía", "Eugenia"],
-  },
-  {
-    id: "4",
-    titulo: "Depa familiar en Tlalpan",
-    precio: 5500,
-    colonia: "Pedregal de San Nicolás, Tlalpan",
-    cuartos: 3,
-    imagen: "https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=600",
-    amueblado: false,
-    petfriendly: true,
-    soloMujeres: false,
-    internet: false,
-    estacionamiento: true,
-    cocina: true,
-    metrosCercanos: ["Periferico Oriente"],
-  },
-];
 
 // ── Chips de filtro rápido ────────────────────────────────────────
 const FILTROS_RAPIDOS = [
@@ -91,7 +28,7 @@ const FILTROS_RAPIDOS = [
 ];
 
 // ── Mapa simulado ─────────────────────────────────────────────────
-const MapaSimulado = ({ depas }: { depas: typeof ANUNCIOS }) => (
+const MapaSimulado = ({ depas }: { depas: any[] }) => (
   <View style={styles.mapaContainer}>
     <Text style={styles.mapaTitulo}>📍 Mapa de departamentos</Text>
     <View style={styles.mapaFondo}>
@@ -117,7 +54,7 @@ const MapaSimulado = ({ depas }: { depas: typeof ANUNCIOS }) => (
 );
 
 // ── Tarjeta de departamento ───────────────────────────────────────
-const TarjetaDepa = ({ item }: { item: (typeof ANUNCIOS)[0] }) => (
+const TarjetaDepa = ({ item }: { item: any }) => (
   <TouchableOpacity style={styles.tarjeta} activeOpacity={0.85}>
     <Image source={{ uri: item.imagen }} style={styles.tarjetaImagen} />
     <View style={styles.tarjetaBadgeContainer}>
@@ -242,6 +179,12 @@ const ModalFiltros = ({
 
 // ── Pantalla principal ────────────────────────────────────────────
 export default function HomeScreen() {
+  const [depas, setDepas] = useState<any[]>([]);
+
+  useEffect(() => {
+    obtenerDepartamentos().then(setDepas);
+  }, []);
+  
   const [busqueda, setBusqueda] = useState("");
   const [chipActivo, setChipActivo] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
@@ -249,7 +192,7 @@ export default function HomeScreen() {
   const [rangoMax, setRangoMax] = useState(10000);
   const carouselRef = useRef<FlatList>(null);
 
-  const depasFiltrados = ANUNCIOS.filter((d) => {
+  const depasFiltrados = depas.filter((d) => {
     const matchBusqueda =
       busqueda === "" ||
       d.titulo.toLowerCase().includes(busqueda.toLowerCase()) ||
@@ -330,7 +273,7 @@ export default function HomeScreen() {
         <Text style={styles.seccionTitulo}>✨ Destacados</Text>
         <FlatList
           ref={carouselRef}
-          data={ANUNCIOS}
+          data={depas}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
