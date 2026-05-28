@@ -1,3 +1,4 @@
+import { URL_BASE } from "../../services/api";
 import React, { useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -75,20 +76,39 @@ export default function Login() {
   const limpiarError = (campo: keyof Errores) =>
     setErrores((e) => ({ ...e, [campo]: undefined }));
 
-  const handleLogin = () => {
-    const e = validarForm(correo, password);
-    if (Object.keys(e).length > 0) {
-      setErrores(e);
+  const handleLogin = async () => {
+  const e = validarForm(correo, password);
+  if (Object.keys(e).length > 0) {
+    setErrores(e);
+    return;
+  }
+  setCargando(true);
+
+  try {
+    const response = await fetch(`${URL_BASE}/usuarios/login/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        correo_electronico: correo,
+        password,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      setErrores({ correo: data.error ?? "Credenciales incorrectas" });
       return;
     }
-    setCargando(true);
 
-    // TODO: llamar a la API de autenticación con { correo, password }
-    setTimeout(() => {
-      setCargando(false);
-      router.replace("/usuarios/perfil");
-    }, 1500);
-  };
+    router.replace("/usuarios/perfil");
+
+    } catch (error) {
+        setErrores({ correo: "No se pudo conectar con el servidor" });
+    } finally {
+        setCargando(false);
+    }
+};
 
   return (
     <SafeAreaView style={cs.container} edges={["top"]}>

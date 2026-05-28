@@ -181,6 +181,8 @@ Consulta la **Guía de Estándares** del proyecto para las reglas de commits y P
 
 Proyecto para la materia **Formulación y Evaluación de Proyectos Informáticos**.
 
+## Instalar CORS para eliminar errores de fetch
+## pip install django-cors-headers
 
 ## En caso de tener una base de datos antigua, eliminarla desde pgAdmin, crearla de nuevo con:
 ## python manage.py makemigrations

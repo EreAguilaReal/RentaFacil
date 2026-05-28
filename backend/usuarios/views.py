@@ -1,6 +1,8 @@
 from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
+from django.contrib.auth import authenticate
 from .models import Usuario
 
 @api_view(['POST'])
@@ -29,3 +31,36 @@ def registrar_usuario(request):
         return Response({'mensaje': 'Usuario creado exitosamente'}, status=status.HTTP_201_CREATED)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['POST'])
+def login_usuario(request):
+    correo    = request.data.get('correo_electronico')
+    password  = request.data.get('password')
+
+    if not correo or not password:
+        return Response(
+            {'error': 'Correo y contraseña son obligatorios'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    usuario = authenticate(request, username=correo, password=password)
+
+    if usuario is None:
+        return Response(
+            {'error': 'Correo o contraseña incorrectos'},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+
+    if not usuario.is_active:
+        return Response(
+            {'error': 'Esta cuenta está desactivada'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    return Response({
+        'mensaje':        'Login exitoso',
+        'id':             usuario.id,
+        'nombre_usuario': usuario.nombre_usuario,
+        'nombres':        usuario.nombres,
+        'tipo_usuario':   usuario.tipo_usuario,
+    }, status=status.HTTP_200_OK)
