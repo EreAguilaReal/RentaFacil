@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { URL_BASE } from "../../services/api";
 
 // ── Tipos ─────────────────────────────────────────────────────────
 type TipoUsuario = "arrendatario" | "arrendador" | "";
@@ -32,10 +33,10 @@ interface FormData {
 
 // ── Opciones ──────────────────────────────────────────────────────
 const GENEROS = [
-  { key: "M", label: "Masculino",          emoji: "👨" },
-  { key: "F", label: "Femenino",           emoji: "👩" },
-  { key: "O", label: "Otro",               emoji: "🧑" },
-  { key: "P", label: "Prefiero no decirlo",emoji: "🤐" },
+  { key: "M", label: "Masculino",           emoji: "👨" },
+  { key: "F", label: "Femenino",            emoji: "👩" },
+  { key: "O", label: "Otro",                emoji: "🧑" },
+  { key: "P", label: "Prefiero no decirlo", emoji: "🤐" },
 ];
 
 const TIPOS_USUARIO = [
@@ -44,9 +45,9 @@ const TIPOS_USUARIO = [
 ];
 
 const DOCS_ARRENDATARIO = [
-  { key: "credencial",    label: "Credencial",               emoji: "🪪" },
-  { key: "inscripcion",   label: "Comprobante de inscripción",emoji: "📋" },
-  { key: "constancia",    label: "Constancia de estudios",    emoji: "📜" },
+  { key: "credencial",  label: "Credencial",                emoji: "🪪" },
+  { key: "inscripcion", label: "Comprobante de inscripción", emoji: "📋" },
+  { key: "constancia",  label: "Constancia de estudios",     emoji: "📜" },
 ];
 
 // ── Validaciones ──────────────────────────────────────────────────
@@ -113,7 +114,7 @@ function validarForm(data: FormData): Errores {
   return e;
 }
 
-// ── Subcomponentes ────────────────────────────────────────────────
+// ── Subcomponente Campo ───────────────────────────────────────────
 function Campo({
   label, emoji, placeholder, value, onChangeText, error,
   secureTextEntry, keyboardType, autoCapitalize,
@@ -161,11 +162,11 @@ const FORM_INICIAL: FormData = {
 export default function Registro() {
   const router = useRouter();
 
-  const [form, setForm]           = useState<FormData>(FORM_INICIAL);
-  const [errores, setErrores]     = useState<Errores>({});
-  const [modalDoc, setModalDoc]   = useState(false);
+  const [form, setForm]             = useState<FormData>(FORM_INICIAL);
+  const [errores, setErrores]       = useState<Errores>({});
+  const [modalDoc, setModalDoc]     = useState(false);
   const [docElegido, setDocElegido] = useState<string>("");
-  const [enviando, setEnviando]   = useState(false);
+  const [enviando, setEnviando]     = useState(false);
 
   const set = (campo: keyof FormData) => (valor: string) => {
     setForm((f) => ({ ...f, [campo]: valor }));
@@ -178,24 +179,43 @@ export default function Registro() {
       setErrores(e);
       return;
     }
-    // Abrir modal de documento
     setDocElegido("");
     setModalDoc(true);
   };
 
-  const handleConfirmarDoc = () => {
+  // ── Conexión con la API ───────────────────────────────────────
+  const handleConfirmarDoc = async () => {
     if (!docElegido) return;
     setModalDoc(false);
     setEnviando(true);
 
-    // TODO: llamar a la API con { ...form, documento_tipo: docElegido }
-    setTimeout(() => {
+    try {
+      const response = await fetch(`${URL_BASE}/usuarios/registro/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          documento_tipo: docElegido,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.error ?? "Error al registrar");
+        return;
+      }
+
+      router.replace("/login");
+
+    } catch (error) {
+      alert("No se pudo conectar con el servidor");
+    } finally {
       setEnviando(false);
-      alert("¡Registro exitoso!");
-      router.replace("/usuarios/perfil");
-    }, 1500);
+    }
   };
 
+  // ── Render ────────────────────────────────────────────────────
   return (
     <SafeAreaView style={cs.container} edges={["top"]}>
       <StatusBar barStyle="dark-content" backgroundColor="#f7f4f0" />
@@ -225,16 +245,15 @@ export default function Registro() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={cs.scroll}
         >
-          {/* Título */}
           <Text style={cs.titulo}>Crear cuenta</Text>
           <Text style={cs.subtitulo}>Completa todos los campos para registrarte</Text>
 
-          {/* ── Sección: datos personales ── */}
+          {/* ── Datos personales ── */}
           <View style={cs.seccion}>
             <Text style={cs.seccionTitulo}>Datos personales</Text>
 
-            <Campo label="Nombres"   emoji="👤" placeholder="Ej. Juan Carlos"
-              value={form.nombres}   onChangeText={set("nombres")}
+            <Campo label="Nombres" emoji="👤" placeholder="Ej. Juan Carlos"
+              value={form.nombres} onChangeText={set("nombres")}
               error={errores.nombres} autoCapitalize="words" />
 
             <Campo label="Apellidos" emoji="👤" placeholder="Ej. García López"
@@ -245,7 +264,6 @@ export default function Registro() {
               value={form.fecha_nacimiento} onChangeText={set("fecha_nacimiento")}
               error={errores.fecha_nacimiento} keyboardType="numeric" autoCapitalize="none" />
 
-            {/* Género */}
             <View style={cs.campoWrapper}>
               <Text style={cs.campoLabel}>⚧  Género</Text>
               <View style={cs.opcionesGrid}>
@@ -253,7 +271,7 @@ export default function Registro() {
                   <TouchableOpacity
                     key={g.key}
                     style={[cs.opcionBtn, form.genero === g.key && cs.opcionBtnActivo]}
-                    onPress={() => { set("genero")(g.key); }}
+                    onPress={() => set("genero")(g.key)}
                   >
                     <Text style={cs.opcionEmoji}>{g.emoji}</Text>
                     <Text style={[cs.opcionLabel, form.genero === g.key && cs.opcionLabelActivo]}>
@@ -266,7 +284,7 @@ export default function Registro() {
             </View>
           </View>
 
-          {/* ── Sección: cuenta ── */}
+          {/* ── Datos de cuenta ── */}
           <View style={cs.seccion}>
             <Text style={cs.seccionTitulo}>Datos de cuenta</Text>
 
@@ -287,7 +305,7 @@ export default function Registro() {
               error={errores.confirmar_password} secureTextEntry autoCapitalize="none" />
           </View>
 
-          {/* ── Sección: tipo de usuario ── */}
+          {/* ── Tipo de usuario ── */}
           <View style={cs.seccion}>
             <Text style={cs.seccionTitulo}>Tipo de usuario</Text>
             <View style={cs.tiposRow}>
@@ -308,7 +326,7 @@ export default function Registro() {
             {!!errores.tipo_usuario && <Text style={cs.errorTexto}>{errores.tipo_usuario}</Text>}
           </View>
 
-          {/* ── Botón registrar ── */}
+          {/* ── Botón continuar ── */}
           <TouchableOpacity
             style={[cs.btnPrimario, enviando && { opacity: 0.6 }]}
             onPress={handleRegistrar}
@@ -319,14 +337,17 @@ export default function Registro() {
             </Text>
           </TouchableOpacity>
 
-        <TouchableOpacity style={cs.linkLogin} onPress={() => router.push("/usuarios/login")}>
+          <TouchableOpacity
+            style={cs.linkLogin}
+            onPress={() => router.push("/login")}
+          >
             <Text style={cs.linkLoginTexto}>¿Ya tienes cuenta? Inicia sesión</Text>
-        </TouchableOpacity>
+          </TouchableOpacity>
 
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* ── Modal: documento arrendador ── */}
+      {/* ── Modal: arrendador ── */}
       <Modal
         visible={modalDoc && form.tipo_usuario === "arrendador"}
         transparent
@@ -353,10 +374,7 @@ export default function Registro() {
             </TouchableOpacity>
 
             <View style={cs.modalBotones}>
-              <TouchableOpacity
-                style={cs.modalBtnSecundario}
-                onPress={() => setModalDoc(false)}
-              >
+              <TouchableOpacity style={cs.modalBtnSecundario} onPress={() => setModalDoc(false)}>
                 <Text style={cs.modalBtnTexto}>Cancelar</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -371,7 +389,7 @@ export default function Registro() {
         </View>
       </Modal>
 
-      {/* ── Modal: documento arrendatario ── */}
+      {/* ── Modal: arrendatario ── */}
       <Modal
         visible={modalDoc && form.tipo_usuario === "arrendatario"}
         transparent
@@ -399,10 +417,7 @@ export default function Registro() {
             ))}
 
             <View style={cs.modalBotones}>
-              <TouchableOpacity
-                style={cs.modalBtnSecundario}
-                onPress={() => setModalDoc(false)}
-              >
+              <TouchableOpacity style={cs.modalBtnSecundario} onPress={() => setModalDoc(false)}>
                 <Text style={cs.modalBtnTexto}>Cancelar</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -423,16 +438,12 @@ export default function Registro() {
 
 // ── Estilos ───────────────────────────────────────────────────────
 const cs = StyleSheet.create({
-  container:  { flex: 1, backgroundColor: "#f7f4f0" },
-  scroll:     { paddingHorizontal: 16, paddingBottom: 48 },
+  container: { flex: 1, backgroundColor: "#f7f4f0" },
+  scroll:    { paddingHorizontal: 16, paddingBottom: 48 },
 
-  // Top bar
   topBar: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    flexDirection: "row", justifyContent: "space-between",
+    alignItems: "center", paddingHorizontal: 16, paddingVertical: 10,
   },
   accionBtn: {
     width: 38, height: 38, borderRadius: 10,
@@ -441,46 +452,32 @@ const cs = StyleSheet.create({
     borderWidth: 1, borderColor: "#e0dcd8",
   },
   accionEmoji: { fontSize: 17 },
-  topLogos:   { flexDirection: "row", gap: 6, alignItems: "center" },
-  logoBadge:  {
-    backgroundColor: "#8B0000", borderRadius: 8,
-    paddingHorizontal: 10, paddingVertical: 5,
-  },
-  logoTexto:  { color: "#fff", fontWeight: "800", fontSize: 12, letterSpacing: 0.5 },
-  separador:  { height: 1, backgroundColor: "#e0dcd8" },
+  topLogos:    { flexDirection: "row", gap: 6, alignItems: "center" },
+  logoBadge:   { backgroundColor: "#8B0000", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+  logoTexto:   { color: "#fff", fontWeight: "800", fontSize: 12, letterSpacing: 0.5 },
+  separador:   { height: 1, backgroundColor: "#e0dcd8" },
 
-  // Encabezado
   titulo:    { fontSize: 26, fontWeight: "900", color: "#1a1a1a", marginTop: 24, marginBottom: 4 },
   subtitulo: { fontSize: 14, color: "#888", marginBottom: 20 },
 
-  // Secciones
   seccion: {
-    backgroundColor: "#fff",
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 16,
+    backgroundColor: "#fff", borderRadius: 18, padding: 16, marginBottom: 16,
     shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
   },
   seccionTitulo: { fontSize: 15, fontWeight: "800", color: "#1a1a1a", marginBottom: 14 },
 
-  // Campos
   campoWrapper: { marginBottom: 14 },
   campoLabel:   { fontSize: 12, fontWeight: "700", color: "#555", marginBottom: 6 },
   input: {
-    backgroundColor: "#f7f4f0",
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: "#e0dcd8",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: "#1a1a1a",
+    backgroundColor: "#f7f4f0", borderRadius: 12,
+    borderWidth: 1.5, borderColor: "#e0dcd8",
+    paddingHorizontal: 14, paddingVertical: 12,
+    fontSize: 15, color: "#1a1a1a",
   },
   inputFocused: { borderColor: "#1a3a8f" },
   inputError:   { borderColor: "#e63946" },
   errorTexto:   { fontSize: 12, color: "#e63946", marginTop: 4, fontWeight: "600" },
 
-  // Opciones género
   opcionesGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   opcionBtn: {
     flexDirection: "row", alignItems: "center", gap: 6,
@@ -488,38 +485,32 @@ const cs = StyleSheet.create({
     backgroundColor: "#f7f4f0", borderRadius: 12,
     borderWidth: 1.5, borderColor: "#e0dcd8",
   },
-  opcionBtnActivo: { backgroundColor: "#eef1fb", borderColor: "#1a3a8f" },
-  opcionEmoji:     { fontSize: 16 },
-  opcionLabel:     { fontSize: 13, fontWeight: "600", color: "#555" },
+  opcionBtnActivo:   { backgroundColor: "#eef1fb", borderColor: "#1a3a8f" },
+  opcionEmoji:       { fontSize: 16 },
+  opcionLabel:       { fontSize: 13, fontWeight: "600", color: "#555" },
   opcionLabelActivo: { color: "#1a3a8f" },
 
-  // Tipo de usuario
   tiposRow: { flexDirection: "row", gap: 10 },
   tipoBtn: {
     flex: 1, alignItems: "center", padding: 16,
     backgroundColor: "#f7f4f0", borderRadius: 14,
     borderWidth: 1.5, borderColor: "#e0dcd8",
   },
-  tipoBtnActivo: { backgroundColor: "#eef1fb", borderColor: "#1a3a8f" },
-  tipoEmoji:     { fontSize: 28, marginBottom: 6 },
-  tipoLabel:     { fontSize: 14, fontWeight: "800", color: "#555" },
+  tipoBtnActivo:   { backgroundColor: "#eef1fb", borderColor: "#1a3a8f" },
+  tipoEmoji:       { fontSize: 28, marginBottom: 6 },
+  tipoLabel:       { fontSize: 14, fontWeight: "800", color: "#555" },
   tipoLabelActivo: { color: "#1a3a8f" },
-  tipoDesc:      { fontSize: 11, color: "#aaa", textAlign: "center", marginTop: 4 },
+  tipoDesc:        { fontSize: 11, color: "#aaa", textAlign: "center", marginTop: 4 },
 
-  // Botones
   btnPrimario: {
     backgroundColor: "#1a3a8f", borderRadius: 14,
     paddingVertical: 16, alignItems: "center", marginTop: 8,
   },
   btnPrimarioTexto: { color: "#fff", fontWeight: "900", fontSize: 15 },
-  linkLogin:        { alignItems: "center", marginTop: 16 },
+  linkLogin:        { alignItems: "center", marginTop: 16, marginBottom: 8 },
   linkLoginTexto:   { fontSize: 13, color: "#1a3a8f", fontWeight: "700" },
 
-  // Modal
-  modalOverlay: {
-    flex: 1, backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "flex-end",
-  },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
   modalContenido: {
     backgroundColor: "#1a3a8f", borderTopLeftRadius: 28, borderTopRightRadius: 28,
     padding: 28, paddingBottom: 40,
@@ -539,7 +530,7 @@ const cs = StyleSheet.create({
   docLabelActivo:  { color: "#fff" },
   checkEmoji:      { fontSize: 18 },
 
-  modalBotones:      { flexDirection: "row", gap: 10, marginTop: 20 },
+  modalBotones: { flexDirection: "row", gap: 10, marginTop: 20 },
   modalBtnSecundario: {
     flex: 1, backgroundColor: "rgba(255,255,255,0.15)",
     borderRadius: 14, paddingVertical: 14, alignItems: "center",

@@ -172,7 +172,7 @@ export default function Perfil() {
         </View>
 
         {/* ── Botón cerrar sesión ── */}
-        <TouchableOpacity style={styles.cerrarSesionBtn} onPress={() => router.replace("/usuarios/login")}>
+        <TouchableOpacity style={styles.cerrarSesionBtn} onPress={() => router.replace("/login")}>
             <Text style={styles.cerrarSesionTexto}>Cerrar sesión</Text>
         </TouchableOpacity>
 
