@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     'rest_framework',
     # Nuestras apps
     'departamentos',
+    'usuarios',
 ]
 
 MIDDLEWARE = [
@@ -98,3 +99,5 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.AllowAny',
     ]
 }
+
+AUTH_USER_MODEL = 'usuarios.Usuario'
