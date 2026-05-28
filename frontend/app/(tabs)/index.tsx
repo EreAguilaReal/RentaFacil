@@ -137,7 +137,7 @@ export default function HomeScreen() {
             <Text style={styles.saludo}>Hola, estudiante 👋</Text>
             <Text style={styles.subtitulo}>Encuentra tu depa en CDMX</Text>
           </View>
-          <TouchableOpacity style={styles.avatarBtn}>
+          <TouchableOpacity style={styles.avatarBtn} onPress={() => router.push("/usuarios/perfil")}>
             <Text style={styles.avatarTexto}>RF</Text>
           </TouchableOpacity>
         </View>

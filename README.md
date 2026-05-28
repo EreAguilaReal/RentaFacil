@@ -180,3 +180,10 @@ Consulta la **Guía de Estándares** del proyecto para las reglas de commits y P
 ## 👥 Equipo
 
 Proyecto para la materia **Formulación y Evaluación de Proyectos Informáticos**.
+
+
+## En caso de tener una base de datos antigua, eliminarla desde pgAdmin, crearla de nuevo con:
+## python manage.py makemigrations
+## python manage.py migrate
+## python manage.py createsuperuser
+## python manage.py runserver 0.0.0.0:8000
