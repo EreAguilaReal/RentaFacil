@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useAuth } from "./../context/AuthContext";
 import {
   ScrollView,
   StatusBar,
@@ -72,6 +73,7 @@ function FilaDato({ emoji, label, valor }: { emoji: string; label: string; valor
 // ── Pantalla principal ────────────────────────────────────────────
 export default function Perfil() {
   const router = useRouter();
+  const { logout } = useAuth();
   const [iconActivo, setIconActivo] = useState<string>("perfil");
 
   // TODO: reemplazar con llamada real a la API
@@ -172,8 +174,11 @@ export default function Perfil() {
         </View>
 
         {/* ── Botón cerrar sesión ── */}
-        <TouchableOpacity style={styles.cerrarSesionBtn} onPress={() => router.replace("/login")}>
-            <Text style={styles.cerrarSesionTexto}>Cerrar sesión</Text>
+        <TouchableOpacity style={styles.cerrarSesionBtn} onPress={() => {
+          logout();
+          router.replace("./login");
+        }}>
+          <Text style={styles.cerrarSesionTexto}>Cerrar sesión</Text>
         </TouchableOpacity>
 
       </ScrollView>

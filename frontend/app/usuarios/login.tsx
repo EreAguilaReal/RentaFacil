@@ -1,4 +1,5 @@
 import { URL_BASE } from "../../services/api";
+import { useAuth } from "../context/AuthContext";
 import React, { useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -67,6 +68,7 @@ function Campo({
 // ── Pantalla principal ────────────────────────────────────────────
 export default function Login() {
   const router = useRouter();
+  const { login } = useAuth();
 
   const [correo, setCorreo]     = useState("");
   const [password, setPassword] = useState("");
@@ -101,7 +103,8 @@ export default function Login() {
       return;
     }
 
-    router.replace("/usuarios/perfil");
+    login(data);
+    router.replace("/(tabs)");
 
     } catch (error) {
         setErrores({ correo: "No se pudo conectar con el servidor" });

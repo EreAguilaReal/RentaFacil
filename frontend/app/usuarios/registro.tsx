@@ -206,7 +206,7 @@ export default function Registro() {
         return;
       }
 
-      router.replace("/login");
+      router.replace("./login");
 
     } catch (error) {
       alert("No se pudo conectar con el servidor");
@@ -339,7 +339,7 @@ export default function Registro() {
 
           <TouchableOpacity
             style={cs.linkLogin}
-            onPress={() => router.push("/login")}
+            onPress={() => router.push("./login")}
           >
             <Text style={cs.linkLoginTexto}>¿Ya tienes cuenta? Inicia sesión</Text>
           </TouchableOpacity>
