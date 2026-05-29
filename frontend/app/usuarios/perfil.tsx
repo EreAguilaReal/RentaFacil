@@ -12,7 +12,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as DocumentPicker from "expo-document-picker";
+import { Linking } from "react-native";
 import { URL_BASE } from "../../services/api";
+import { Platform } from "react-native";
+
+const MEDIA_BASE = Platform.OS === "web"
+  ? "http://localhost:8000/media/"
+  : "http://192.168.1.84:8000/media/";
 
 // ── Etiquetas ─────────────────────────────────────────────────────
 const GENERO_LABEL: Record<string, string> = {
@@ -54,42 +60,75 @@ export default function Perfil() {
   const router = useRouter();
   const { logout, usuario } = useAuth();
   const [iconActivo, setIconActivo] = useState<string>("perfil");
+  const { actualizarUsuario } = useAuth();
 
   // Protección por si usuario es null
   if (!usuario) return null;
 
-const handleSubirDocumento = async () => {
-  try {
-    const resultado = await DocumentPicker.getDocumentAsync({
-      type: "application/pdf",
-      copyToCacheDirectory: true,
-    });
-
-    if (resultado.canceled) return;
-
-    const archivo = resultado.assets[0];
-    const formData = new FormData();
-    formData.append("documento_verificacion", {
-      uri:  archivo.uri,
-      name: archivo.name,
-      type: "application/pdf",
-    } as any);
-
-    const response = await fetch(`${URL_BASE}/usuarios/${usuario.id}/subir-documento/`, {
-      method: "PATCH",
-      body: formData,
-    });
-
-    if (!response.ok) {
-      alert("Error al subir el documento");
-      return;
+  const refrescarUsuario = async () => {
+    try {
+      const response = await fetch(`${URL_BASE}/usuarios/${usuario.id}/`);
+      const data = await response.json();
+      await actualizarUsuario(data);
+    } catch (error) {
+      console.log("Error al refrescar usuario:", error);
     }
+  };
 
-    alert("Documento subido correctamente");
-    // TODO: actualizar el contexto con el nuevo estado del usuario
+  const handleSubirDocumento = async () => {
+    if (!usuario) return;
+    try {
+      const resultado = await DocumentPicker.getDocumentAsync({
+        type: "application/pdf",
+        copyToCacheDirectory: true,
+      });
+      if (resultado.canceled) return;
+
+      const archivo = resultado.assets[0];
+      const formData = new FormData();
+      formData.append("documento_verificacion", {
+        uri:  archivo.uri,
+        name: archivo.name,
+        type: "application/pdf",
+      } as any);
+
+      const response = await fetch(
+        `${URL_BASE}/usuarios/${usuario.id}/subir-documento/`,
+        { method: "PATCH", body: formData }
+      );
+
+      if (!response.ok) {
+        alert("Error al subir el documento");
+        return;
+      }
+
+      await refrescarUsuario();  // ← recargar en lugar de actualizar manualmente
+      alert("Documento subido. En espera de verificación.");
 
     } catch (error) {
       alert("No se pudo subir el documento");
+    }
+  };
+
+  const handleEliminarDocumento = async () => {
+    if (!usuario) return;
+    try {
+      const response = await fetch(
+        `${URL_BASE}/usuarios/${usuario.id}/subir-documento/`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ documento_verificacion: null }),
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+      if (!response.ok) {
+        alert("Error al eliminar el documento");
+        return;
+      }
+
+      await refrescarUsuario();  // ← recargar también aquí
+    } catch (error) {
+      alert("No se pudo eliminar el documento");
     }
   };
 
@@ -171,9 +210,25 @@ const handleSubirDocumento = async () => {
 
           <View style={styles.docContainer}>
             {usuario.documento_verificacion ? (
-              <View style={styles.docActivo}>
-                <Text style={styles.docEmoji}>✅</Text>
-                <Text style={styles.docTexto}>Documento verificado</Text>
+              <View style={styles.docPendiente}>
+                <Text style={styles.docEmoji}>⏳</Text>
+                <Text style={styles.docTexto}>Documento en espera de verificación</Text>
+
+                {/* Botón descargar */}
+                <TouchableOpacity
+                  style={styles.docBtn}
+                  onPress={() => Linking.openURL(`${MEDIA_BASE}${usuario.documento_verificacion}`)}
+                >
+                  <Text style={styles.docBtnTexto}>📥 Ver documento</Text>
+                </TouchableOpacity>
+
+                {/* Botón eliminar y subir nuevo */}
+                <TouchableOpacity
+                  style={[styles.docBtn, { backgroundColor: "#e63946", marginTop: 8 }]}
+                  onPress={handleEliminarDocumento}
+                >
+                  <Text style={styles.docBtnTexto}>🗑 Eliminar y subir nuevo</Text>
+                </TouchableOpacity>
               </View>
             ) : (
               <View style={styles.docPendiente}>

@@ -1,20 +1,63 @@
+import os 
 from rest_framework.decorators import api_view
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth import authenticate
 from .models import Usuario
+from django.conf import settings
+
+@api_view(['GET'])
+def obtener_usuario(request, id):
+    try:
+        usuario = Usuario.objects.get(id=id)
+        return Response({
+            'id':                      usuario.id,
+            'nombre_usuario':          usuario.nombre_usuario,
+            'nombres':                 usuario.nombres,
+            'apellidos':               usuario.apellidos,
+            'correo_electronico':      usuario.correo_electronico,
+            'fecha_nacimiento':        str(usuario.fecha_nacimiento),
+            'genero':                  usuario.genero,
+            'tipo_usuario':            usuario.tipo_usuario,
+            'documento_verificacion':  usuario.documento_verificacion.url
+                if usuario.documento_verificacion else None,
+        })
+    except Usuario.DoesNotExist:
+        return Response({'error': 'No encontrado'}, status=404)
 
 @api_view(['PATCH'])
 def subir_documento(request, id):
     try:
         usuario = Usuario.objects.get(id=id)
-        usuario.documento_verificacion = request.FILES.get('documento_verificacion')
+
+        if 'documento_verificacion' in request.FILES:
+            # Eliminar archivo anterior si existe
+            if usuario.documento_verificacion:
+                ruta_anterior = os.path.join(settings.MEDIA_ROOT, str(usuario.documento_verificacion))
+                if os.path.exists(ruta_anterior):
+                    os.remove(ruta_anterior)
+
+            usuario.documento_verificacion = request.FILES['documento_verificacion']
+
+        else:
+            # Eliminar archivo al recibir null
+            if usuario.documento_verificacion:
+                ruta = os.path.join(settings.MEDIA_ROOT, str(usuario.documento_verificacion))
+                if os.path.exists(ruta):
+                    os.remove(ruta)
+            usuario.documento_verificacion = None
+
         usuario.save()
-        return Response({'mensaje': 'Documento subido correctamente'}, status=status.HTTP_200_OK)
+        return Response({
+            'mensaje': 'Operación exitosa',
+            'documento_verificacion': usuario.documento_verificacion.url
+                if usuario.documento_verificacion else None,
+        }, status=status.HTTP_200_OK)
+
     except Usuario.DoesNotExist:
         return Response({'error': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
-
+    
 @api_view(['POST'])
 def registrar_usuario(request):
     data = request.data
