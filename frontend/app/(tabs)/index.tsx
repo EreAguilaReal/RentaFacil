@@ -16,6 +16,7 @@ import { useFiltros } from "../context/FiltrosContext";
 import BusquedaBar from "../components/BusquedaBar";
 import ChipsFiltro from "../components/ChipsFiltro";
 import ModalFiltros from "../components/ModalFiltros";
+import { useAuth } from "../context/AuthContext";
 
 const { width } = Dimensions.get("window");
 
@@ -111,7 +112,7 @@ export default function HomeScreen() {
   const [cargando, setCargando] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const carouselRef = useRef<FlatList>(null);
-
+  const { usuario } = useAuth();
   const { busqueda, chipActivo } = useFiltros();
 
   useEffect(() => {
@@ -134,7 +135,7 @@ export default function HomeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.saludo}>Hola, estudiante 👋</Text>
+            <Text style={styles.saludo}>Hola, {usuario?.nombres ?? "estudiante"} 👋</Text>
             <Text style={styles.subtitulo}>Encuentra tu depa en CDMX</Text>
           </View>
           <TouchableOpacity style={styles.avatarBtn} onPress={() => router.push("/usuarios/perfil")}>
