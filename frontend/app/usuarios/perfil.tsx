@@ -149,8 +149,12 @@ export default function Perfil() {
           <TouchableOpacity style={styles.accionBtn} onPress={() => router.back()}>
             <Text style={styles.accionEmoji}>←</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.accionBtn}>
+          <TouchableOpacity
+            style={styles.accionBtnEditar}
+            onPress={() => router.push("/usuarios/editar")}
+          >
             <Text style={styles.accionEmoji}>✏️</Text>
+            <Text style={styles.accionEditarTexto}>Editar datos</Text>
           </TouchableOpacity>
         </View>
 
@@ -312,4 +316,18 @@ const styles = StyleSheet.create({
     marginHorizontal: 16, marginBottom: 40, marginTop: 8,
   },
   cerrarSesionTexto: { color: "#fff", fontWeight: "900", fontSize: 15 },
+  accionBtnEditar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
+    borderWidth: 1, borderColor: "#e0dcd8",
+  },
+  accionEditarTexto: {
+    fontSize: 13, fontWeight: "700", color: "#1a3a8f",
+  },
 });

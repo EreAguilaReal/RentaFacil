@@ -6,4 +6,5 @@ urlpatterns = [
     path('login/',    views.login_usuario),
     path('<int:id>/', views.obtener_usuario),
     path('<int:id>/subir-documento/', views.subir_documento),
+    path('<int:id>/editar/', views.editar_usuario),
 ]

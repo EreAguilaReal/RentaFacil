@@ -122,3 +122,18 @@ def login_usuario(request):
     'tipo_usuario':            usuario.tipo_usuario,
     'documento_verificacion':  str(usuario.documento_verificacion) if usuario.documento_verificacion else None,
     }, status=status.HTTP_200_OK)
+
+@api_view(['PATCH'])
+def editar_usuario(request, id):
+    try:
+        usuario = Usuario.objects.get(id=id)
+        campos_editables = ['nombres', 'apellidos', 'nombre_usuario', 'fecha_nacimiento', 'genero']
+        
+        for campo in campos_editables:
+            if campo in request.data:
+                setattr(usuario, campo, request.data[campo])
+        
+        usuario.save()
+        return Response({'mensaje': 'Datos actualizados correctamente'}, status=status.HTTP_200_OK)
+    except Usuario.DoesNotExist:
+        return Response({'error': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
