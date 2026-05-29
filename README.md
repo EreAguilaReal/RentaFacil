@@ -181,6 +181,7 @@ Consulta la **Guía de Estándares** del proyecto para las reglas de commits y P
 
 Proyecto para la materia **Formulación y Evaluación de Proyectos Informáticos**.
 
+## Notas
 Instalar CORS para eliminar errores de fetch - Desde RentaFacil>
 ```bash
 pip install django-cors-headers
@@ -188,6 +189,10 @@ pip install django-cors-headers
 Instalar AsyncStorage para guardar el estado del login - Desde RentaFacil/frontend>
 ```bash
 npx expo install @react-native-async-storage/async-storage
+```
+Instalar libreria para selector de fecha - RentaFacil/frontend>
+```bash
+npx expo install @react-native-community/datetimepicker
 ```
 Subir archivos - Desde RentaFacil/frontend>
 ```bash

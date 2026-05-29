@@ -65,11 +65,11 @@ export default function TabsLayout() {
       />
 
       <Tabs.Screen
-        name="perfil"
+        name="configuracion"
         options={{
-          title: "Perfil",
+          title: "Configuracion",
           tabBarIcon: ({ color }) => (
-            <Text style={{ fontSize: 20, color }}>👤</Text>
+            <Text style={{ fontSize: 20, color }}>⚙️</Text>
           ),
         }}
       />
