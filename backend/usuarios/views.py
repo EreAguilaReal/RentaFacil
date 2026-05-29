@@ -58,9 +58,14 @@ def login_usuario(request):
         )
 
     return Response({
-        'mensaje':        'Login exitoso',
-        'id':             usuario.id,
-        'nombre_usuario': usuario.nombre_usuario,
-        'nombres':        usuario.nombres,
-        'tipo_usuario':   usuario.tipo_usuario,
+    'mensaje':                 'Login exitoso',
+    'id':                      usuario.id,
+    'nombre_usuario':          usuario.nombre_usuario,
+    'nombres':                 usuario.nombres,
+    'apellidos':               usuario.apellidos,
+    'correo_electronico':      usuario.correo_electronico,
+    'fecha_nacimiento':        str(usuario.fecha_nacimiento),
+    'genero':                  usuario.genero,
+    'tipo_usuario':            usuario.tipo_usuario,
+    'documento_verificacion':  str(usuario.documento_verificacion) if usuario.documento_verificacion else None,
     }, status=status.HTTP_200_OK)

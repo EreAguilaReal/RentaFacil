@@ -12,38 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 
-// ── Tipos ─────────────────────────────────────────────────────────
-type Usuario = {
-  nombre_usuario: string;
-  nombres: string;
-  apellidos: string;
-  correo_electronico: string;
-  fecha_nacimiento: string;
-  genero: string;
-  tipo_usuario: string;
-  documento_verificacion: string | null;
-};
-
-// ── Íconos top bar ────────────────────────────────────────────────
-const TOP_ICONS = [
-  { key: "perfil",    emoji: "👤" },
-  { key: "favoritos", emoji: "🤍" },
-  { key: "chat",      emoji: "💬" },
-  { key: "ajustes",   emoji: "⚙️" },
-];
-
-// ── Datos de ejemplo (reemplazar con llamada a API) ───────────────
-const USUARIO_EJEMPLO: Usuario = {
-  nombre_usuario:        "rodba123",
-  nombres:               "Rodrigo",
-  apellidos:             "Barajas",
-  correo_electronico:    "rodba123.rc@gmail.com",
-  fecha_nacimiento:      "2000-05-15",
-  genero:                "M",
-  tipo_usuario:          "arrendatario",
-  documento_verificacion: null,
-};
-
+// ── Etiquetas ─────────────────────────────────────────────────────
 const GENERO_LABEL: Record<string, string> = {
   M: "Masculino",
   F: "Femenino",
@@ -56,6 +25,14 @@ const TIPO_LABEL: Record<string, string> = {
   arrendatario: "Arrendatario",
   arrendador:   "Arrendador",
 };
+
+// ── Íconos top bar ────────────────────────────────────────────────
+const TOP_ICONS = [
+  { key: "perfil",    emoji: "👤" },
+  { key: "favoritos", emoji: "🤍" },
+  { key: "chat",      emoji: "💬" },
+  { key: "ajustes",   emoji: "⚙️" },
+];
 
 // ── Componente fila de dato ───────────────────────────────────────
 function FilaDato({ emoji, label, valor }: { emoji: string; label: string; valor: string }) {
@@ -73,12 +50,12 @@ function FilaDato({ emoji, label, valor }: { emoji: string; label: string; valor
 // ── Pantalla principal ────────────────────────────────────────────
 export default function Perfil() {
   const router = useRouter();
-  const { logout } = useAuth();
+  const { logout, usuario } = useAuth();
   const [iconActivo, setIconActivo] = useState<string>("perfil");
 
-  // TODO: reemplazar con llamada real a la API
-  const usuario = USUARIO_EJEMPLO;
 
+  // Protección por si usuario es null
+  if (!usuario) return null;
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <StatusBar barStyle="dark-content" backgroundColor="#f7f4f0" />
@@ -174,9 +151,9 @@ export default function Perfil() {
         </View>
 
         {/* ── Botón cerrar sesión ── */}
-        <TouchableOpacity style={styles.cerrarSesionBtn} onPress={() => {
-          logout();
-          router.replace("./login");
+        <TouchableOpacity style={styles.cerrarSesionBtn} onPress={async () => {
+          await logout();
+          router.replace("/usuarios/login");
         }}>
           <Text style={styles.cerrarSesionTexto}>Cerrar sesión</Text>
         </TouchableOpacity>
