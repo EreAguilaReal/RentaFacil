@@ -11,6 +11,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import * as DocumentPicker from "expo-document-picker";
+import { URL_BASE } from "../../services/api";
 
 // ── Etiquetas ─────────────────────────────────────────────────────
 const GENERO_LABEL: Record<string, string> = {
@@ -53,9 +55,44 @@ export default function Perfil() {
   const { logout, usuario } = useAuth();
   const [iconActivo, setIconActivo] = useState<string>("perfil");
 
-
   // Protección por si usuario es null
   if (!usuario) return null;
+
+const handleSubirDocumento = async () => {
+  try {
+    const resultado = await DocumentPicker.getDocumentAsync({
+      type: "application/pdf",
+      copyToCacheDirectory: true,
+    });
+
+    if (resultado.canceled) return;
+
+    const archivo = resultado.assets[0];
+    const formData = new FormData();
+    formData.append("documento_verificacion", {
+      uri:  archivo.uri,
+      name: archivo.name,
+      type: "application/pdf",
+    } as any);
+
+    const response = await fetch(`${URL_BASE}/usuarios/${usuario.id}/subir-documento/`, {
+      method: "PATCH",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      alert("Error al subir el documento");
+      return;
+    }
+
+    alert("Documento subido correctamente");
+    // TODO: actualizar el contexto con el nuevo estado del usuario
+
+    } catch (error) {
+      alert("No se pudo subir el documento");
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <StatusBar barStyle="dark-content" backgroundColor="#f7f4f0" />
@@ -142,7 +179,7 @@ export default function Perfil() {
               <View style={styles.docPendiente}>
                 <Text style={styles.docEmoji}>📄</Text>
                 <Text style={styles.docTexto}>Sin documento cargado</Text>
-                <TouchableOpacity style={styles.docBtn}>
+                <TouchableOpacity style={styles.docBtn} onPress={handleSubirDocumento}>
                   <Text style={styles.docBtnTexto}>Subir documento</Text>
                 </TouchableOpacity>
               </View>

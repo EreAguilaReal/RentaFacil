@@ -5,6 +5,16 @@ from rest_framework import status
 from django.contrib.auth import authenticate
 from .models import Usuario
 
+@api_view(['PATCH'])
+def subir_documento(request, id):
+    try:
+        usuario = Usuario.objects.get(id=id)
+        usuario.documento_verificacion = request.FILES.get('documento_verificacion')
+        usuario.save()
+        return Response({'mensaje': 'Documento subido correctamente'}, status=status.HTTP_200_OK)
+    except Usuario.DoesNotExist:
+        return Response({'error': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+
 @api_view(['POST'])
 def registrar_usuario(request):
     data = request.data
