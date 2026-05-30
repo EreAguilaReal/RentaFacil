@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { Linking } from "react-native";
 
 // ── Tipos ─────────────────────────────────────────────────────────
 type Errores = { correo?: string; password?: string };
@@ -120,12 +121,16 @@ export default function Login() {
       {/* ── Top Bar ── */}
       <View style={cs.topBar}>
         <View style={cs.topLogos}>
-          <View style={cs.logoBadge}>
-            <Text style={cs.logoTexto}>IPN</Text>
-          </View>
-          <View style={[cs.logoBadge, { backgroundColor: "#003366" }]}>
-            <Text style={cs.logoTexto}>ESCOM</Text>
-          </View>
+          <TouchableOpacity onPress={() => Linking.openURL("https://www.ipn.mx")}>
+            <View style={cs.logoBadge}>
+              <Text style={cs.logoTexto}>IPN</Text>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => Linking.openURL("https://www.escom.ipn.mx")}>
+            <View style={[cs.logoBadge, { backgroundColor: "#003366" }]}>
+              <Text style={cs.logoTexto}>ESCOM</Text>
+            </View>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -167,10 +172,6 @@ export default function Login() {
               secureTextEntry
               error={errores.password}
             />
-
-            <TouchableOpacity style={cs.olvidaste}>
-              <Text style={cs.olvidasteTexto}>¿Olvidaste tu contraseña?</Text>
-            </TouchableOpacity>
           </View>
 
           {/* ── Botón ingresar ── */}

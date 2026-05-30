@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { URL_BASE } from "../../services/api";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 // ── Tipos ─────────────────────────────────────────────────────────
 type TipoUsuario = "arrendatario" | "arrendador" | "";
@@ -162,6 +163,8 @@ const FORM_INICIAL: FormData = {
 export default function Registro() {
   const router = useRouter();
 
+  const [mostrarFecha, setMostrarFecha] = useState(false);
+
   const [form, setForm]             = useState<FormData>(FORM_INICIAL);
   const [errores, setErrores]       = useState<Errores>({});
   const [modalDoc, setModalDoc]     = useState(false);
@@ -183,7 +186,6 @@ export default function Registro() {
     setModalDoc(true);
   };
 
-  // ── Conexión con la API ───────────────────────────────────────
   const handleConfirmarDoc = async () => {
     if (!docElegido) return;
     setModalDoc(false);
@@ -215,7 +217,6 @@ export default function Registro() {
     }
   };
 
-  // ── Render ────────────────────────────────────────────────────
   return (
     <SafeAreaView style={cs.container} edges={["top"]}>
       <StatusBar barStyle="dark-content" backgroundColor="#f7f4f0" />
@@ -260,10 +261,124 @@ export default function Registro() {
               value={form.apellidos} onChangeText={set("apellidos")}
               error={errores.apellidos} autoCapitalize="words" />
 
-            <Campo label="Fecha de nacimiento" emoji="🎂" placeholder="AAAA-MM-DD"
-              value={form.fecha_nacimiento} onChangeText={set("fecha_nacimiento")}
-              error={errores.fecha_nacimiento} keyboardType="numeric" autoCapitalize="none" />
+            {/* ── Fecha de nacimiento ── */}
+            <View style={cs.campoWrapper}>
+              <Text style={cs.campoLabel}>
+                🎂 Fecha de nacimiento
+              </Text>
 
+              {Platform.OS === "web" ? (
+                <input
+                  type="date"
+                  value={form.fecha_nacimiento}
+                  max={new Date().toISOString().split("T")[0]}
+                  onChange={(e) =>
+                    set("fecha_nacimiento")(e.target.value)
+                  }
+                  style={{
+                    backgroundColor: "#f7f4f0",
+                    borderRadius: 12,
+                    border: "1.5px solid #e0dcd8",
+                    paddingInline: 14,
+                    paddingBlock: 12,
+                    fontSize: 15,
+                    color: "#1a1a1a",
+                    width: "100%",
+                    boxSizing: "border-box",
+                    fontFamily: "inherit",
+                  }}
+                />
+              ) : (
+                <>
+                  <TouchableOpacity
+                    style={[
+                      cs.input,
+                      errores.fecha_nacimiento && cs.inputError,
+                    ]}
+                    onPress={() => setMostrarFecha(true)}
+                  >
+                    <Text
+                      style={{
+                        color: form.fecha_nacimiento
+                          ? "#1a1a1a"
+                          : "#bbb",
+                        fontSize: 15,
+                      }}
+                    >
+                      {form.fecha_nacimiento ||
+                        "Selecciona una fecha"}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {mostrarFecha && (
+                    <DateTimePicker
+                      value={
+                        form.fecha_nacimiento
+                          ? new Date(form.fecha_nacimiento)
+                          : new Date(2000, 0, 1)
+                      }
+                      mode="date"
+                      display={
+                        Platform.OS === "ios"
+                          ? "spinner"
+                          : "default"
+                      }
+                      maximumDate={new Date()}
+                      onChange={(event, selectedDate) => {
+                        if (Platform.OS !== "ios") {
+                          setMostrarFecha(false);
+                        }
+
+                        if (selectedDate) {
+                          const yyyy =
+                            selectedDate.getFullYear();
+
+                          const mm = String(
+                            selectedDate.getMonth() + 1
+                          ).padStart(2, "0");
+
+                          const dd = String(
+                            selectedDate.getDate()
+                          ).padStart(2, "0");
+
+                          set("fecha_nacimiento")(
+                            `${yyyy}-${mm}-${dd}`
+                          );
+                        }
+                      }}
+                    />
+                  )}
+
+                  {/* Botón cerrar para iOS */}
+                  {mostrarFecha && Platform.OS === "ios" && (
+                    <TouchableOpacity
+                      style={{
+                        marginTop: 10,
+                        alignSelf: "flex-end",
+                      }}
+                      onPress={() => setMostrarFecha(false)}
+                    >
+                      <Text
+                        style={{
+                          color: "#1a3a8f",
+                          fontWeight: "700",
+                        }}
+                      >
+                        Confirmar
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </>
+              )}
+
+              {!!errores.fecha_nacimiento && (
+                <Text style={cs.errorTexto}>
+                  {errores.fecha_nacimiento}
+                </Text>
+              )}
+            </View>
+
+            {/* ── Género ── */}
             <View style={cs.campoWrapper}>
               <Text style={cs.campoLabel}>⚧  Género</Text>
               <View style={cs.opcionesGrid}>

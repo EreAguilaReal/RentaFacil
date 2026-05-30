@@ -11,29 +11,14 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import { obtenerDepartamentos } from "../../services/api";
+import { obtenerDepartamentos, Departamento } from "../../services/api";
 import { useFiltros } from "../context/FiltrosContext";
 import BusquedaBar from "../components/BusquedaBar";
 import ChipsFiltro from "../components/ChipsFiltro";
 import ModalFiltros from "../components/ModalFiltros";
+import { useAuth } from "../context/AuthContext";
 
 const { width } = Dimensions.get("window");
-
-// ── Tipos ─────────────────────────────────────────────────────────
-interface Departamento {
-  id: string;
-  titulo: string;
-  precio: number;
-  colonia: string;
-  metro_cercano: string;
-  imagen: string;
-  tipo_renta: "solo_mujeres" | "solo_hombres" | "mixto";
-  amueblado: boolean;
-  pet_friendly: boolean;
-  internet: boolean;
-  estacionamiento: boolean;
-  cocina: boolean;
-}
 
 // ── Mapa simulado ─────────────────────────────────────────────────
 const MapaSimulado = ({ depas }: { depas: Departamento[] }) => (
@@ -111,7 +96,7 @@ export default function HomeScreen() {
   const [cargando, setCargando] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const carouselRef = useRef<FlatList>(null);
-
+  const { usuario } = useAuth();
   const { busqueda, chipActivo } = useFiltros();
 
   useEffect(() => {
@@ -134,7 +119,7 @@ export default function HomeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.saludo}>Hola, estudiante 👋</Text>
+            <Text style={styles.saludo}>Hola, {usuario?.nombres ?? "estudiante"} 👋</Text>
             <Text style={styles.subtitulo}>Encuentra tu depa en CDMX</Text>
           </View>
           <TouchableOpacity style={styles.avatarBtn} onPress={() => router.push("/usuarios/perfil")}>

@@ -1,10 +1,63 @@
+import os 
 from rest_framework.decorators import api_view
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth import authenticate
 from .models import Usuario
+from django.conf import settings
 
+@api_view(['GET'])
+def obtener_usuario(request, id):
+    try:
+        usuario = Usuario.objects.get(id=id)
+        return Response({
+            'id':                      usuario.id,
+            'nombre_usuario':          usuario.nombre_usuario,
+            'nombres':                 usuario.nombres,
+            'apellidos':               usuario.apellidos,
+            'correo_electronico':      usuario.correo_electronico,
+            'fecha_nacimiento':        str(usuario.fecha_nacimiento),
+            'genero':                  usuario.genero,
+            'tipo_usuario':            usuario.tipo_usuario,
+            'documento_verificacion':  usuario.documento_verificacion.url
+                if usuario.documento_verificacion else None,
+        })
+    except Usuario.DoesNotExist:
+        return Response({'error': 'No encontrado'}, status=404)
+
+@api_view(['PATCH'])
+def subir_documento(request, id):
+    try:
+        usuario = Usuario.objects.get(id=id)
+
+        if 'documento_verificacion' in request.FILES:
+            # Eliminar archivo anterior si existe
+            if usuario.documento_verificacion:
+                ruta_anterior = os.path.join(settings.MEDIA_ROOT, str(usuario.documento_verificacion))
+                if os.path.exists(ruta_anterior):
+                    os.remove(ruta_anterior)
+
+            usuario.documento_verificacion = request.FILES['documento_verificacion']
+
+        else:
+            # Eliminar archivo al recibir null
+            if usuario.documento_verificacion:
+                ruta = os.path.join(settings.MEDIA_ROOT, str(usuario.documento_verificacion))
+                if os.path.exists(ruta):
+                    os.remove(ruta)
+            usuario.documento_verificacion = None
+
+        usuario.save()
+        return Response({
+            'mensaje': 'Operación exitosa',
+            'documento_verificacion': usuario.documento_verificacion.url
+                if usuario.documento_verificacion else None,
+        }, status=status.HTTP_200_OK)
+
+    except Usuario.DoesNotExist:
+        return Response({'error': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+    
 @api_view(['POST'])
 def registrar_usuario(request):
     data = request.data
@@ -58,9 +111,29 @@ def login_usuario(request):
         )
 
     return Response({
-        'mensaje':        'Login exitoso',
-        'id':             usuario.id,
-        'nombre_usuario': usuario.nombre_usuario,
-        'nombres':        usuario.nombres,
-        'tipo_usuario':   usuario.tipo_usuario,
+    'mensaje':                 'Login exitoso',
+    'id':                      usuario.id,
+    'nombre_usuario':          usuario.nombre_usuario,
+    'nombres':                 usuario.nombres,
+    'apellidos':               usuario.apellidos,
+    'correo_electronico':      usuario.correo_electronico,
+    'fecha_nacimiento':        str(usuario.fecha_nacimiento),
+    'genero':                  usuario.genero,
+    'tipo_usuario':            usuario.tipo_usuario,
+    'documento_verificacion':  str(usuario.documento_verificacion) if usuario.documento_verificacion else None,
     }, status=status.HTTP_200_OK)
+
+@api_view(['PATCH'])
+def editar_usuario(request, id):
+    try:
+        usuario = Usuario.objects.get(id=id)
+        campos_editables = ['nombres', 'apellidos', 'nombre_usuario', 'fecha_nacimiento', 'genero']
+        
+        for campo in campos_editables:
+            if campo in request.data:
+                setattr(usuario, campo, request.data[campo])
+        
+        usuario.save()
+        return Response({'mensaje': 'Datos actualizados correctamente'}, status=status.HTTP_200_OK)
+    except Usuario.DoesNotExist:
+        return Response({'error': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)

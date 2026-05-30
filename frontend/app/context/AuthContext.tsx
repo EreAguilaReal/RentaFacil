@@ -7,12 +7,25 @@ import React, {
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+interface UsuarioAuth {
+  id:             number;
+  nombre_usuario: string;
+  nombres:        string;
+  apellidos:      string;
+  correo_electronico: string;
+  fecha_nacimiento:   string;
+  genero:         string;
+  tipo_usuario:   string;
+  documento_verificacion: string | null;
+}
+
 interface AuthContextType {
-  usuario: any | null;
-  login: (datos: any) => Promise<void>;
-  logout: () => Promise<void>;
+  usuario: UsuarioAuth | null;
+  login:   (datos: UsuarioAuth) => Promise<void>;
+  logout:  () => Promise<void>;
   estaAutenticado: boolean;
   cargando: boolean;
+  actualizarUsuario: (datos: Partial<UsuarioAuth>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -21,6 +34,7 @@ const AuthContext = createContext<AuthContextType>({
   logout: async () => {},
   estaAutenticado: false,
   cargando: true,
+  actualizarUsuario: async () => {},
 });
 
 export function AuthProvider({
@@ -35,6 +49,12 @@ export function AuthProvider({
   useEffect(() => {
     cargarSesion();
   }, []);
+
+  const actualizarUsuario = async (datos: Partial<UsuarioAuth>) => {
+    const nuevoUsuario = { ...usuario, ...datos } as UsuarioAuth;
+    setUsuario(nuevoUsuario);
+    await AsyncStorage.setItem("usuario", JSON.stringify(nuevoUsuario));
+  };
 
   const cargarSesion = async () => {
     try {
@@ -73,6 +93,7 @@ export function AuthProvider({
         logout,
         estaAutenticado: !!usuario,
         cargando,
+        actualizarUsuario,
       }}
     >
       {children}

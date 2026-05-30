@@ -181,14 +181,32 @@ Consulta la **Guía de Estándares** del proyecto para las reglas de commits y P
 
 Proyecto para la materia **Formulación y Evaluación de Proyectos Informáticos**.
 
-## Instalar CORS para eliminar errores de fetch - Desde RentaFacil>
-## pip install django-cors-headers
+## Notas
 
-## Instalar AsyncStorage para guardar el estado del login - Desde RentaFacil/frontend>
-## npx expo install @react-native-async-storage/async-storage
+Instalar CORS para eliminar errores de fetch - Desde `RentaFacil/`:
+```bash
+pip install django-cors-headers
+```
 
-## En caso de tener una base de datos antigua, eliminarla desde pgAdmin, crearla de nuevo con:
-## python manage.py makemigrations
-## python manage.py migrate
-## python manage.py createsuperuser
-## python manage.py runserver 0.0.0.0:8000
+Instalar AsyncStorage para guardar el estado del login - Desde `RentaFacil/frontend/`:
+```bash
+npx expo install @react-native-async-storage/async-storage
+```
+
+Instalar librería para selector de fecha - Desde `RentaFacil/frontend/`:
+```bash
+npx expo install @react-native-community/datetimepicker
+```
+
+Subir archivos - Desde `RentaFacil/frontend/`:
+```bash
+npx expo install expo-document-picker
+```
+
+En caso de tener una base de datos antigua, eliminarla desde pgAdmin y crearla de nuevo:
+```bash
+python manage.py makemigrations {nombre-app}
+python manage.py migrate
+python manage.py createsuperuser
+python manage.py runserver 0.0.0.0:8000
+```

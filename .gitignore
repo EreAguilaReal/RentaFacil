@@ -12,4 +12,4 @@ node_modules/
 build/
 
 # Ignorar API URL
-/frontend/services/api.ts
+frontend/services/api.ts
