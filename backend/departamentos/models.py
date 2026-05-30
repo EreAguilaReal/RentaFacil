@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 
 class Departamento(models.Model):
     TIPO_RENTA_CHOICES = [
@@ -32,3 +33,16 @@ class Departamento(models.Model):
 
     def __str__(self):
         return f"{self.titulo} - ${self.precio}/mes"
+     
+    arrendador    = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        related_name='departamentos', null=True, blank=True
+    )
+    inquilino     = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        related_name='renta_actual', null=True, blank=True
+    )
+    disponible    = models.BooleanField(default=True)
+    rentado_hasta = models.DateField(null=True, blank=True)
+    vistas_mes    = models.IntegerField(default=0)
+    calificacion  = models.DecimalField(max_digits=3, decimal_places=1, null=True, blank=True)

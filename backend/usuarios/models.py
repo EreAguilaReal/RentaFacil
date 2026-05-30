@@ -40,6 +40,7 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     genero                 = models.CharField(max_length=1, choices=GENERO_CHOICES, blank=True)
     tipo_usuario           = models.CharField(max_length=20, choices=TIPO_USUARIO_CHOICES, default='arrendatario')
     documento_verificacion = models.FileField(upload_to='documentos/', null=True, blank=True)
+    verificado = models.BooleanField(default=False)
 
     is_active  = models.BooleanField(default=True)
     is_staff   = models.BooleanField(default=False)

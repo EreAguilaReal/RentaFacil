@@ -17,6 +17,7 @@ interface UsuarioAuth {
   genero:         string;
   tipo_usuario:   string;
   documento_verificacion: string | null;
+  verificado:   boolean;
 }
 
 interface AuthContextType {

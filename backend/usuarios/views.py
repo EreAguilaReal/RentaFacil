@@ -1,11 +1,10 @@
 import os 
 from rest_framework.decorators import api_view
-from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth import authenticate
-from .models import Usuario
 from django.conf import settings
+from .models import Usuario
 
 @api_view(['GET'])
 def obtener_usuario(request, id):
@@ -22,6 +21,7 @@ def obtener_usuario(request, id):
             'tipo_usuario':            usuario.tipo_usuario,
             'documento_verificacion':  usuario.documento_verificacion.url
                 if usuario.documento_verificacion else None,
+            'verificado': usuario.verificado,
         })
     except Usuario.DoesNotExist:
         return Response({'error': 'No encontrado'}, status=404)
@@ -121,6 +121,7 @@ def login_usuario(request):
     'genero':                  usuario.genero,
     'tipo_usuario':            usuario.tipo_usuario,
     'documento_verificacion':  str(usuario.documento_verificacion) if usuario.documento_verificacion else None,
+    'verificado': usuario.verificado,
     }, status=status.HTTP_200_OK)
 
 @api_view(['PATCH'])
@@ -161,3 +162,51 @@ def cambiar_password(request, id):
     usuario.set_password(password_nueva)
     usuario.save()
     return Response({'mensaje': 'Contraseña actualizada correctamente'}, status=200)
+
+# ── Verificar documento (Staff) ───────────────────────────────────
+@api_view(['PATCH'])
+def verificar_documento(request, id):
+    accion = request.data.get('accion')  # "aprobar" | "rechazar"
+    if accion not in ('aprobar', 'rechazar'):
+        return Response({'error': 'Acción inválida'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        usuario = Usuario.objects.get(id=id)
+    except Usuario.DoesNotExist:
+        return Response({'error': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+
+    if accion == 'aprobar':
+        usuario.verificado = True
+        # Conserva el archivo como evidencia, solo marca verificado
+    else:
+        # Rechazar: elimina el documento y deja al usuario volver a subir uno
+        if usuario.documento_verificacion:
+            ruta = os.path.join(settings.MEDIA_ROOT, str(usuario.documento_verificacion))
+            if os.path.exists(ruta):
+                os.remove(ruta)
+        usuario.documento_verificacion = None
+        usuario.verificado = False
+
+    usuario.save()
+    return Response({'mensaje': f'Documento {accion}do correctamente'}, status=status.HTTP_200_OK)
+
+
+# ── Documentos pendientes (Staff) ─────────────────────────────────
+@api_view(['GET'])
+def documentos_pendientes(request):
+    """Usuarios que tienen documento subido pero aún no están verificados."""
+    usuarios = Usuario.objects.filter(
+        documento_verificacion__isnull=False,
+        verificado=False,
+    ).exclude(documento_verificacion='')
+
+    data = [
+        {
+            'id':            u.id,
+            'usuario_nombre': f'{u.nombres} {u.apellidos}',
+            'tipo_usuario':  u.tipo_usuario,
+            'url':           u.documento_verificacion.url if u.documento_verificacion else None,
+        }
+        for u in usuarios
+    ]
+    return Response(data, status=status.HTTP_200_OK)
