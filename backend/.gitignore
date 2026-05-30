@@ -1,0 +1,38 @@
+# ── Python ────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# ── Entorno virtual ───────────────────────────────────────────────
+env/
+venv/
+.env
+.venv
+ENV/
+
+# ── Django ────────────────────────────────────────────────────────
+*.log
+db.sqlite3
+media/
+staticfiles/
+static/
+
+# ── Variables de entorno ──────────────────────────────────────────
+.env
+.env.local
+.env.production
+
+# ── Migraciones (opcional, muchos equipos sí las suben) ──────────
+# migrations/
+
+# ── IDEs ──────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Sistema operativo ─────────────────────────────────────────────
+.DS_Store
+Thumbs.db

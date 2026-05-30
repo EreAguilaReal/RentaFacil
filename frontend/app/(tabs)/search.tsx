@@ -10,27 +10,12 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import { obtenerDepartamentos } from "../../services/api";
+import { obtenerDepartamentos, Departamento } from "../../services/api";
 import { useFiltros } from "../context/FiltrosContext";
 import BusquedaBar from "../components/BusquedaBar";
 import ChipsFiltro from "../components/ChipsFiltro";
 import ModalFiltros from "../components/ModalFiltros";
 
-// ── Tipos ─────────────────────────────────────────────────────────
-interface Departamento {
-  id: string;
-  titulo: string;
-  precio: number;
-  colonia: string;
-  metro_cercano: string;
-  imagen: string;
-  tipo_renta: "solo_mujeres" | "solo_hombres" | "mixto";
-  amueblado: boolean;
-  pet_friendly: boolean;
-  internet: boolean;
-  estacionamiento: boolean;
-  cocina: boolean;
-}
 
 // ── Tarjeta de departamento ───────────────────────────────────────
 const TarjetaDepa = ({ item }: { item: Departamento }) => (

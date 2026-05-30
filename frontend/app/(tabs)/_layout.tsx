@@ -1,8 +1,17 @@
-import { Tabs } from "expo-router";
-import { FiltrosProvider } from "../context/FiltrosContext";
+import { Redirect, Tabs } from "expo-router";
 import { Text } from "react-native";
+import { useAuth } from "../context/AuthContext";
+import { FiltrosProvider } from "../context/FiltrosContext";
 
-export default function RootLayout() {
+export default function TabsLayout() {
+  const { estaAutenticado, cargando } = useAuth();
+
+  if (cargando) return null;
+
+  if (!estaAutenticado) {
+    return <Redirect href="/usuarios/login" />;
+  }
+
   return (
     <FiltrosProvider>
       <Tabs
@@ -24,48 +33,12 @@ export default function RootLayout() {
           },
         }}
       >
-        <Tabs.Screen
-          name="index"
-          options={{
-            title: "Inicio",
-            tabBarIcon: ({ color }) => (
-              <Text style={{ fontSize: 20, color }}>🏠</Text>
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="favoritos"
-          options={{
-            title: "Favoritos",
-            tabBarIcon: ({ color }) => (
-              <Text style={{ fontSize: 20, color }}>❤️</Text>
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="mensajes"
-          options={{
-            title: "Mensajes",
-            tabBarIcon: ({ color }) => (
-              <Text style={{ fontSize: 20, color }}>💬</Text>
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="perfil"
-          options={{
-            title: "Perfil",
-            tabBarIcon: ({ color }) => (
-              <Text style={{ fontSize: 20, color }}>👤</Text>
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="search"
-          options={{
-            href: null,  // ← oculta del tab bar, solo se accede por navegación
-          }}
-        />
+        <Tabs.Screen name="index" options={{ title: "Inicio", tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>🏠</Text> }} />
+        <Tabs.Screen name="favoritos" options={{ title: "Favoritos", tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>❤️</Text> }} />
+        <Tabs.Screen name="mensajes/index" options={{ title: "Mensajes", tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>💬</Text> }} />
+        <Tabs.Screen name="mensajes/[id]" options={{ href: null }} />
+        <Tabs.Screen name="configuracion" options={{ title: "Configuracion", tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>⚙️</Text> }} />
+        <Tabs.Screen name="search" options={{ href: null }} />
       </Tabs>
     </FiltrosProvider>
   );

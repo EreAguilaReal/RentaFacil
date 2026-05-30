@@ -3,6 +3,7 @@ import {
   Dimensions,
   FlatList,
   Image,
+  Linking,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,29 +12,14 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import { obtenerDepartamentos } from "../../services/api";
+import { obtenerDepartamentos, Departamento } from "../../services/api";
 import { useFiltros } from "../context/FiltrosContext";
 import BusquedaBar from "../components/BusquedaBar";
 import ChipsFiltro from "../components/ChipsFiltro";
 import ModalFiltros from "../components/ModalFiltros";
+import { useAuth } from "../context/AuthContext";
 
 const { width } = Dimensions.get("window");
-
-// ── Tipos ─────────────────────────────────────────────────────────
-interface Departamento {
-  id: string;
-  titulo: string;
-  precio: number;
-  colonia: string;
-  metro_cercano: string;
-  imagen: string;
-  tipo_renta: "solo_mujeres" | "solo_hombres" | "mixto";
-  amueblado: boolean;
-  pet_friendly: boolean;
-  internet: boolean;
-  estacionamiento: boolean;
-  cocina: boolean;
-}
 
 // ── Mapa simulado ─────────────────────────────────────────────────
 const MapaSimulado = ({ depas }: { depas: Departamento[] }) => (
@@ -111,7 +97,7 @@ export default function HomeScreen() {
   const [cargando, setCargando] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const carouselRef = useRef<FlatList>(null);
-
+  const { usuario } = useAuth();
   const { busqueda, chipActivo } = useFiltros();
 
   useEffect(() => {
@@ -129,15 +115,32 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+
+    {/* ── Top Bar ── */}
+      <View style={styles.topBar}>
+        <View style={styles.topLogos}>
+          <TouchableOpacity onPress={() => Linking.openURL("https://www.ipn.mx")}>
+            <View style={styles.logoBadge}>
+              <Text style={styles.logoTexto}>IPN</Text>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => Linking.openURL("https://www.escom.ipn.mx")}>
+            <View style={[styles.logoBadge, { backgroundColor: "#003366" }]}>
+              <Text style={styles.logoTexto}>ESCOM</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <ScrollView showsVerticalScrollIndicator={false}>
 
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.saludo}>Hola, estudiante 👋</Text>
+            <Text style={styles.saludo}>Hola, {usuario?.nombres ?? "estudiante"} 👋</Text>
             <Text style={styles.subtitulo}>Encuentra tu depa en CDMX</Text>
           </View>
-          <TouchableOpacity style={styles.avatarBtn}>
+          <TouchableOpacity style={styles.avatarBtn} onPress={() => router.push("/usuarios/perfil")}>
             <Text style={styles.avatarTexto}>RF</Text>
           </TouchableOpacity>
         </View>
@@ -347,4 +350,23 @@ const styles = StyleSheet.create({
   tarjetaPrecio: { fontSize: 17, fontWeight: "900", color: "#e63946" },
   tarjetaIconos: { flexDirection: "row", gap: 4 },
   iconoSmall: { fontSize: 16 },
+
+  topBar: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: "#f7f4f0",
+  },
+  topLogos:  { flexDirection: "row", gap: 6, alignItems: "center" },
+  logoBadge: {
+    backgroundColor: "#8B0000",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  logoTexto: { color: "#fff", fontWeight: "800", fontSize: 12, letterSpacing: 0.5 },
+  separador: { height: 1, backgroundColor: "#e0dcd8" },
+
 });
