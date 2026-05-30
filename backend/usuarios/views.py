@@ -137,3 +137,27 @@ def editar_usuario(request, id):
         return Response({'mensaje': 'Datos actualizados correctamente'}, status=status.HTTP_200_OK)
     except Usuario.DoesNotExist:
         return Response({'error': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+    
+# usuarios/views.py — agregar esta función
+@api_view(['PATCH'])
+def cambiar_password(request, id):
+    password_actual = request.data.get('password_actual')
+    password_nueva  = request.data.get('password_nueva')
+
+    if not password_actual or not password_nueva:
+        return Response({'error': 'Ambos campos son obligatorios'}, status=400)
+
+    if len(password_nueva) < 8:
+        return Response({'error': 'La nueva contraseña debe tener al menos 8 caracteres'}, status=400)
+
+    try:
+        usuario = Usuario.objects.get(id=id)
+    except Usuario.DoesNotExist:
+        return Response({'error': 'Usuario no encontrado'}, status=404)
+
+    if not usuario.check_password(password_actual):
+        return Response({'error': 'La contraseña actual es incorrecta'}, status=400)
+
+    usuario.set_password(password_nueva)
+    usuario.save()
+    return Response({'mensaje': 'Contraseña actualizada correctamente'}, status=200)
