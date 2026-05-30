@@ -16,8 +16,8 @@ import * as DocumentPicker from "expo-document-picker";
 import { URL_BASE } from "../../services/api";
 
 const MEDIA_BASE = Platform.OS === "web"
-  ? "http://localhost:8000/media/"
-  : "http://192.168.1.84:8000/media/";
+  ? "http://localhost:8000/"
+  : "http://192.168.1.84:8000/";
 
 // ── Etiquetas ─────────────────────────────────────────────────────
 const GENERO_LABEL: Record<string, string> = {
@@ -65,39 +65,46 @@ export default function Perfil() {
   };
 
   const handleSubirDocumento = async () => {
-    if (!usuario) return;
-    try {
-      const resultado = await DocumentPicker.getDocumentAsync({
-        type: "application/pdf",
-        copyToCacheDirectory: true,
-      });
-      if (resultado.canceled) return;
+  if (!usuario) return;
+  try {
+    const resultado = await DocumentPicker.getDocumentAsync({
+      type: "application/pdf",
+      copyToCacheDirectory: true,
+    });
+    if (resultado.canceled) return;
 
-      const archivo = resultado.assets[0];
-      const formData = new FormData();
+    const archivo = resultado.assets[0];
+    const formData = new FormData();
+
+    if (Platform.OS === "web") {
+      // En web, archivo.file es un File nativo del navegador
+      formData.append("documento_verificacion", archivo.file as File, archivo.name);
+    } else {
+      // En móvil, se construye el objeto manualmente
       formData.append("documento_verificacion", {
         uri:  archivo.uri,
         name: archivo.name,
         type: "application/pdf",
       } as any);
-
-      const response = await fetch(
-        `${URL_BASE}/usuarios/${usuario.id}/subir-documento/`,
-        { method: "PATCH", body: formData }
-      );
-
-      if (!response.ok) {
-        alert("Error al subir el documento");
-        return;
-      }
-
-      await refrescarUsuario();
-      alert("Documento subido. En espera de verificación.");
-
-    } catch (error) {
-      alert("No se pudo subir el documento");
     }
-  };
+
+    const response = await fetch(
+      `${URL_BASE}/usuarios/${usuario.id}/subir-documento/`,
+      { method: "PATCH", body: formData }
+    );
+
+    if (!response.ok) {
+      alert("Error al subir el documento");
+      return;
+    }
+
+    await refrescarUsuario();
+    alert("Documento subido. En espera de verificación.");
+
+  } catch (error) {
+    alert("No se pudo subir el documento");
+  }
+};
 
   const handleEliminarDocumento = async () => {
     if (!usuario) return;
