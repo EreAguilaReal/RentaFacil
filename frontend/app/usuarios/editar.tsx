@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import {
   KeyboardAvoidingView,
+  Linking,
   Platform,
   ScrollView,
   StatusBar,
@@ -14,6 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "../context/AuthContext";
 import { URL_BASE } from "../../services/api";
+import { styles } from "./perfil";
 
 // ── Tipos ─────────────────────────────────────────────────────────
 type Errores = {
@@ -169,17 +171,9 @@ export default function Editar() {
 
       {/* ── Top Bar ── */}
       <View style={cs.topBar}>
-        <TouchableOpacity style={cs.accionBtn} onPress={() => router.back()}>
+        <TouchableOpacity style={cs.accionBtn} onPress={() => router.push("/usuarios/perfil")}>
           <Text style={cs.accionEmoji}>←</Text>
         </TouchableOpacity>
-        <View style={cs.topLogos}>
-          <View style={cs.logoBadge}>
-            <Text style={cs.logoTexto}>IPN</Text>
-          </View>
-          <View style={[cs.logoBadge, { backgroundColor: "#003366" }]}>
-            <Text style={cs.logoTexto}>ESCOM</Text>
-          </View>
-        </View>
       </View>
 
       <View style={cs.separador} />

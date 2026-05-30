@@ -153,7 +153,7 @@ export default function Perfil() {
 
         {/* ── Barra de acciones ── */}
         <View style={styles.accionesBar}>
-          <TouchableOpacity style={styles.accionBtn} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.accionBtn} onPress={() => router.push("/(tabs)")}>
             <Text style={styles.accionEmoji}>←</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -241,7 +241,7 @@ export default function Perfil() {
 }
 
 // ── Estilos ───────────────────────────────────────────────────────
-const styles = StyleSheet.create({
+export const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f7f4f0" },
 
   topBar: {
