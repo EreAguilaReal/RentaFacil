@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     # Nuestras apps
     'departamentos',
     'usuarios',
+    'mensajes',
 ]
 
 MIDDLEWARE = [

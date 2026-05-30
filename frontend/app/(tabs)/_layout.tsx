@@ -55,12 +55,17 @@ export default function TabsLayout() {
       />
 
       <Tabs.Screen
-        name="mensajes"
+        name="mensajes/index"
         options={{
           title: "Mensajes",
-          tabBarIcon: ({ color }) => (
-            <Text style={{ fontSize: 20, color }}>💬</Text>
-          ),
+          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>💬</Text>,
+        }}
+      />
+
+      <Tabs.Screen
+        name="mensajes/[id]"
+        options={{
+          href: null,  // ← oculta la conversación de la tab bar
         }}
       />
 

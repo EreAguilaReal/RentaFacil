@@ -200,7 +200,7 @@ npx expo install expo-document-picker
 ```
 En caso de tener una base de datos antigua, eliminarla desde pgAdmin, crearla de nuevo con:
 ```bash
-python manage.py makemigrations
+python manage.py makemigrations {nombre-app}
 python manage.py migrate
 python manage.py createsuperuser
 python manage.py runserver 0.0.0.0:8000
