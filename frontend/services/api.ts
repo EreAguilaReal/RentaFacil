@@ -1,4 +1,4 @@
-const URL_BASE = 'http://192.168.100.51:8000/api';
+const URL_BASE = 'http://10.46.150.230:8000/api';
 
 export async function obtenerDepartamentos(filtros: Record<string, string> = {}) {
   const params = new URLSearchParams(filtros).toString();
