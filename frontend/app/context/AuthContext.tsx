@@ -9,6 +9,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface UsuarioAuth {
   id:             number;
+  token:          string;
   nombre_usuario: string;
   nombres:        string;
   apellidos:      string;
@@ -18,6 +19,7 @@ interface UsuarioAuth {
   tipo_usuario:   string;
   documento_verificacion: string | null;
   verificado:   boolean;
+  estado_verificacion: 'pendiente' | 'aprobado' | 'rechazado' | '';
 }
 
 interface AuthContextType {

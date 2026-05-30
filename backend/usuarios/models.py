@@ -32,6 +32,19 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
         ('arrendador',  'Arrendador'),
     ]
 
+    ESTADO_VERIFICACION_CHOICES = [
+    ('pendiente', 'Pendiente'),
+    ('aprobado',  'Aprobado'),
+    ('rechazado', 'Rechazado'),
+]
+
+    estado_verificacion = models.CharField(
+        max_length=20,
+        choices=ESTADO_VERIFICACION_CHOICES,
+        default='pendiente',
+        blank=True,
+    )
+
     correo_electronico     = models.EmailField(unique=True)
     nombre_usuario         = models.CharField(max_length=50, unique=True)
     nombres                = models.CharField(max_length=100)

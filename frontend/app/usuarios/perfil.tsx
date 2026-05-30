@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "./../context/AuthContext";
 import {
   ActivityIndicator,
@@ -15,6 +15,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as DocumentPicker from "expo-document-picker";
 import { URL_BASE } from "../../services/api";
+import { useFocusEffect } from "expo-router";
+import { useCallback } from "react";
 
 const MEDIA_BASE = Platform.OS === "web"
   ? "http://localhost:8000/"
@@ -27,7 +29,8 @@ const TIPO_LABEL: Record<string, string> = {
   admin: "Administrador", arrendatario: "Arrendatario", arrendador: "Arrendador",
 };
 
-// ── Tipos ─────────────────────────────────────────────────────────
+type EstadoVerificacion = "pendiente" | "aprobado" | "rechazado" | "";
+
 type Departamento = {
   id: number;
   titulo: string;
@@ -53,10 +56,12 @@ function FilaDato({ emoji, label, valor }: { emoji: string; label: string; valor
   );
 }
 
-function Estrellas({ valor }: { valor: number }) {
+function Estrellas({ valor }: { valor: number | null | undefined }) {
   return (
     <Text style={{ fontSize: 13, color: "#f4a500" }}>
-      {"⭐".repeat(Math.round(valor))} {valor.toFixed(1)}
+      {valor != null
+        ? `${"⭐".repeat(Math.round(valor))} ${valor.toFixed(1)}`
+        : "Sin calificación"}
     </Text>
   );
 }
@@ -72,7 +77,6 @@ function VistaArrendador({ depas, cargando, router }: {
 
   return (
     <>
-      {/* Mis departamentos */}
       <View style={styles.seccionContainer}>
         <Text style={styles.seccionTitulo}>🏢 Mis departamentos</Text>
         {cargando ? (
@@ -89,8 +93,8 @@ function VistaArrendador({ depas, cargando, router }: {
               <Text style={styles.depTitulo}>{d.titulo}</Text>
               <Text style={styles.depSub}>{d.colonia}</Text>
               <View style={styles.chipsRow}>
-                <View style={[styles.chip, d.disponible ? styles.chipAmber : styles.chipGreen]}>
-                  <Text style={[styles.chipTexto, d.disponible ? styles.chipAmberTexto : styles.chipGreenTexto]}>
+                <View style={d.disponible ? styles.chipAmber : styles.chipGreen}>
+                  <Text style={d.disponible ? styles.chipAmberTexto : styles.chipGreenTexto}>
                     {d.disponible ? "Disponible" : "Rentado"}
                   </Text>
                 </View>
@@ -99,16 +103,15 @@ function VistaArrendador({ depas, cargando, router }: {
                     <Text style={styles.chipBlueTexto}>{d.vistas_mes} vistas/mes</Text>
                   </View>
                 )}
-                {d.calificacion !== undefined && (
+                {d.calificacion !== null && (
                   <View style={styles.chipAmber}>
-                    <Text style={styles.chipAmberTexto}>{d.calificacion.toFixed(1)} ★</Text>
+                    <Text style={styles.chipAmberTexto}>{Number(d.calificacion).toFixed(1) ?? "Sin calificación"} ★</Text>
                   </View>
                 )}
               </View>
               {!d.disponible && d.inquilino_nombre && (
                 <Text style={styles.depMeta}>
-                  👤 {d.inquilino_nombre}
-                  {d.rentado_hasta ? `  · Hasta: ${d.rentado_hasta}` : ""}
+                  👤 {d.inquilino_nombre}{d.rentado_hasta ? `  · Hasta: ${d.rentado_hasta}` : ""}
                 </Text>
               )}
             </TouchableOpacity>
@@ -122,7 +125,6 @@ function VistaArrendador({ depas, cargando, router }: {
         </TouchableOpacity>
       </View>
 
-      {/* Reportes */}
       <View style={styles.seccionContainer}>
         <Text style={styles.seccionTitulo}>📊 Reportes</Text>
         <View style={styles.statsGrid}>
@@ -208,7 +210,7 @@ function VistaStaff({ router }: { router: any }) {
   const [depas, setDepas] = useState<Departamento[]>([]);
   const [cargando, setCargando] = useState(true);
 
-  React.useEffect(() => {
+  useEffect(() => {
     Promise.all([
       fetch(`${URL_BASE}/usuarios/documentos-pendientes/`).then(r => r.json()),
       fetch(`${URL_BASE}/departamentos/?disponible=false`).then(r => r.json()),
@@ -237,7 +239,9 @@ function VistaStaff({ router }: { router: any }) {
         ) : (
           docs.map((doc) => (
             <View key={doc.id} style={styles.docRow}>
-              <View style={styles.docIcono}><Text style={{ fontSize: 20 }}>📄</Text></View>
+              <View style={styles.docIcono}>
+                <Text style={{ fontSize: 20 }}>📄</Text>
+              </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.docNombre} numberOfLines={1}>{doc.usuario_nombre}</Text>
                 <Text style={styles.docSub}>{TIPO_LABEL[doc.tipo_usuario] ?? doc.tipo_usuario}</Text>
@@ -291,16 +295,15 @@ function VistaStaff({ router }: { router: any }) {
                     <Text style={styles.chipBlueTexto}>{d.vistas_mes} vistas/mes</Text>
                   </View>
                 )}
-                {d.calificacion !== undefined && (
+                {d.calificacion !== null && (
                   <View style={styles.chipAmber}>
-                    <Text style={styles.chipAmberTexto}>{d.calificacion.toFixed(1)} ★</Text>
+                    <Text style={styles.chipAmberTexto}>{Number(d.calificacion).toFixed(1) ?? "Sin calificación"} ★</Text>
                   </View>
                 )}
               </View>
               {d.inquilino_nombre && (
                 <Text style={styles.depMeta}>
-                  👤 {d.inquilino_nombre}
-                  {d.rentado_hasta ? `  · Hasta: ${d.rentado_hasta}` : ""}
+                  👤 {d.inquilino_nombre}{d.rentado_hasta ? `  · Hasta: ${d.rentado_hasta}` : ""}
                 </Text>
               )}
             </TouchableOpacity>
@@ -315,13 +318,25 @@ function VistaStaff({ router }: { router: any }) {
 export default function Perfil() {
   const router = useRouter();
   const { logout, usuario, actualizarUsuario } = useAuth();
-  const [depas, setDepas]       = useState<Departamento[]>([]);
+  const [depas, setDepas]             = useState<Departamento[]>([]);
   const [cargandoDepas, setCargandoDepas] = useState(false);
 
-  React.useEffect(() => {
+  // Refresca datos del usuario cada vez que la pantalla recibe foco
+  useFocusEffect(
+    useCallback(() => {
+      if (!usuario) return;
+      fetch(`${URL_BASE}/usuarios/${usuario.id}/`)
+        .then(r => r.json())
+        .then(data => actualizarUsuario(data))
+        .catch(() => {});
+    }, [usuario?.id])
+  );
+
+  // Carga departamentos según rol
+  useEffect(() => {
     if (!usuario) return;
-    const esArrendador    = usuario.tipo_usuario === "arrendador";
-    const esArrendatario  = usuario.tipo_usuario === "arrendatario";
+    const esArrendador   = usuario.tipo_usuario === "arrendador";
+    const esArrendatario = usuario.tipo_usuario === "arrendatario";
     if (!esArrendador && !esArrendatario) return;
 
     setCargandoDepas(true);
@@ -333,11 +348,12 @@ export default function Perfil() {
       .then(r => r.json())
       .then(setDepas)
       .finally(() => setCargandoDepas(false));
-  }, [usuario]);
+  }, [usuario?.id]); // solo se re-ejecuta si cambia el id
 
   const refrescarUsuario = async () => {
+    if (!usuario) return;
     try {
-      const r = await fetch(`${URL_BASE}/usuarios/${usuario!.id}/`);
+      const r = await fetch(`${URL_BASE}/usuarios/${usuario.id}/`);
       await actualizarUsuario(await r.json());
     } catch {}
   };
@@ -355,9 +371,14 @@ export default function Perfil() {
       if (Platform.OS === "web") {
         formData.append("documento_verificacion", archivo.file as File, archivo.name);
       } else {
-        formData.append("documento_verificacion", { uri: archivo.uri, name: archivo.name, type: "application/pdf" } as any);
+        formData.append("documento_verificacion", {
+          uri: archivo.uri, name: archivo.name, type: "application/pdf",
+        } as any);
       }
-      const r = await fetch(`${URL_BASE}/usuarios/${usuario.id}/subir-documento/`, { method: "PATCH", body: formData });
+      const r = await fetch(
+        `${URL_BASE}/usuarios/${usuario.id}/subir-documento/`,
+        { method: "PATCH", body: formData }
+      );
       if (!r.ok) { alert("Error al subir el documento"); return; }
       await refrescarUsuario();
       alert("Documento subido. En espera de verificación.");
@@ -367,11 +388,14 @@ export default function Perfil() {
   const handleEliminarDocumento = async () => {
     if (!usuario) return;
     try {
-      const r = await fetch(`${URL_BASE}/usuarios/${usuario.id}/subir-documento/`, {
-        method: "PATCH",
-        body: JSON.stringify({ documento_verificacion: null }),
-        headers: { "Content-Type": "application/json" },
-      });
+      const r = await fetch(
+        `${URL_BASE}/usuarios/${usuario.id}/subir-documento/`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ documento_verificacion: null }),
+          headers: { "Content-Type": "application/json" },
+        }
+      );
       if (!r.ok) { alert("Error al eliminar el documento"); return; }
       await refrescarUsuario();
     } catch { alert("No se pudo eliminar el documento"); }
@@ -382,8 +406,12 @@ export default function Perfil() {
   const esArrendador   = usuario.tipo_usuario === "arrendador";
   const esArrendatario = usuario.tipo_usuario === "arrendatario";
   const esStaff        = usuario.tipo_usuario === "admin";
-  // Solo arrendadores/arrendatarios sin verificación ven la sección de documento
-  const mostrarDoc = (esArrendador || esArrendatario) && !usuario.verificado;
+
+  // Leer campos con fallback seguro por si el backend aún no los devuelve
+  const verificado:         boolean               = (usuario as any).verificado          ?? false;
+  const estadoVerificacion: EstadoVerificacion    = (usuario as any).estado_verificacion ?? "";
+
+  const mostrarDoc = (esArrendador || esArrendatario) && !verificado;
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -406,6 +434,7 @@ export default function Perfil() {
       <View style={styles.separador} />
 
       <ScrollView showsVerticalScrollIndicator={false}>
+
         {/* Barra de acciones */}
         <View style={styles.accionesBar}>
           <TouchableOpacity style={styles.accionBtn} onPress={() => router.push("/(tabs)")}>
@@ -440,38 +469,64 @@ export default function Perfil() {
           <FilaDato emoji="⚧"  label="Género"              valor={GENERO_LABEL[usuario.genero] ?? usuario.genero} />
         </View>
 
-        {/* Documento de verificación — solo si no está verificado */}
-        {mostrarDoc && (
+        {/* Verificación — visible también cuando está aprobado para mostrar confirmación */}
+        {(esArrendador || esArrendatario) && (
           <View style={styles.seccionContainer}>
             <Text style={styles.seccionTitulo}>Verificación</Text>
-            <View style={styles.docContainer}>
-              {usuario.documento_verificacion ? (
-                <View style={styles.docPendiente}>
-                  <Text style={styles.docEmoji}>⏳</Text>
-                  <Text style={styles.docTexto}>Documento en espera de verificación</Text>
-                  <TouchableOpacity
-                    style={styles.docBtn}
-                    onPress={() => Linking.openURL(`${MEDIA_BASE}${usuario.documento_verificacion}`)}
-                  >
-                    <Text style={styles.docBtnTexto}>📥 Ver documento</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.docBtn, { backgroundColor: "#e63946", marginTop: 8 }]}
-                    onPress={handleEliminarDocumento}
-                  >
-                    <Text style={styles.docBtnTexto}>🗑 Eliminar y subir nuevo</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <View style={styles.docPendiente}>
-                  <Text style={styles.docEmoji}>📄</Text>
-                  <Text style={styles.docTexto}>Sin documento cargado</Text>
-                  <TouchableOpacity style={styles.docBtn} onPress={handleSubirDocumento}>
-                    <Text style={styles.docBtnTexto}>Subir documento</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
+
+            {/* ✅ Aprobado */}
+            {verificado && (
+              <View style={styles.docPendiente}>
+                <Text style={styles.docEmoji}>✅</Text>
+                <Text style={[styles.docTexto, { color: "#27500A", textAlign: "center" }]}>
+                  Tu identidad ha sido verificada correctamente
+                </Text>
+              </View>
+            )}
+
+            {/* ❌ Rechazado */}
+            {!verificado && estadoVerificacion === "rechazado" && (
+              <View style={styles.docPendiente}>
+                <Text style={styles.docEmoji}>❌</Text>
+                <Text style={[styles.docTexto, { color: "#e63946", textAlign: "center" }]}>
+                  Tu documento fue rechazado.{"\n"}Por favor sube uno nuevo.
+                </Text>
+                <TouchableOpacity style={styles.docBtn} onPress={handleSubirDocumento}>
+                  <Text style={styles.docBtnTexto}>📎 Subir nuevo documento</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* ⏳ Pendiente con documento subido */}
+            {!verificado && estadoVerificacion === "pendiente" && usuario.documento_verificacion && (
+              <View style={styles.docPendiente}>
+                <Text style={styles.docEmoji}>⏳</Text>
+                <Text style={styles.docTexto}>Documento en espera de verificación</Text>
+                <TouchableOpacity
+                  style={styles.docBtn}
+                  onPress={() => Linking.openURL(`${MEDIA_BASE}${usuario.documento_verificacion}`)}
+                >
+                  <Text style={styles.docBtnTexto}>📥 Ver documento</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.docBtn, { backgroundColor: "#e63946", marginTop: 8 }]}
+                  onPress={handleEliminarDocumento}
+                >
+                  <Text style={styles.docBtnTexto}>🗑 Eliminar y subir nuevo</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* 📄 Sin documento */}
+            {!verificado && !usuario.documento_verificacion && estadoVerificacion !== "rechazado" && (
+              <View style={styles.docPendiente}>
+                <Text style={styles.docEmoji}>📄</Text>
+                <Text style={styles.docTexto}>Sin documento cargado</Text>
+                <TouchableOpacity style={styles.docBtn} onPress={handleSubirDocumento}>
+                  <Text style={styles.docBtnTexto}>Subir documento</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         )}
 
@@ -487,13 +542,13 @@ export default function Perfil() {
         >
           <Text style={styles.cerrarSesionTexto}>Cerrar sesión</Text>
         </TouchableOpacity>
+
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  // — los estilos originales que ya tenías —
   container: { flex: 1, backgroundColor: "#f7f4f0" },
   topBar: { flexDirection: "row", justifyContent: "flex-end", alignItems: "center", paddingHorizontal: 16, paddingVertical: 10, backgroundColor: "#f7f4f0" },
   topLogos: { flexDirection: "row", gap: 6, alignItems: "center" },
@@ -519,7 +574,6 @@ const styles = StyleSheet.create({
   filaTextos: { flex: 1 },
   filaLabel: { fontSize: 12, color: "#aaa", fontWeight: "600" },
   filaValor: { fontSize: 15, color: "#333", fontWeight: "600", marginTop: 2 },
-  docContainer: { paddingVertical: 8 },
   docPendiente: { alignItems: "center", gap: 8, paddingVertical: 8 },
   docEmoji: { fontSize: 28 },
   docTexto: { fontSize: 14, color: "#555", fontWeight: "600" },
@@ -527,16 +581,12 @@ const styles = StyleSheet.create({
   docBtnTexto: { color: "#fff", fontWeight: "800", fontSize: 13 },
   cerrarSesionBtn: { backgroundColor: "#e63946", borderRadius: 14, paddingVertical: 16, alignItems: "center", marginHorizontal: 16, marginBottom: 40, marginTop: 8 },
   cerrarSesionTexto: { color: "#fff", fontWeight: "900", fontSize: 15 },
-
-  // — estilos nuevos —
   vaciTexto: { fontSize: 14, color: "#aaa", textAlign: "center", paddingVertical: 12 },
   depCard: { borderWidth: 1, borderColor: "#e0dcd8", borderRadius: 12, padding: 12, marginBottom: 8 },
   depTitulo: { fontSize: 15, fontWeight: "800", color: "#1a1a1a" },
   depSub: { fontSize: 12, color: "#888", marginTop: 2 },
   depMeta: { fontSize: 12, color: "#555", marginTop: 6 },
   chipsRow: { flexDirection: "row", gap: 6, marginTop: 8, flexWrap: "wrap" },
-  chip: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
-  chipTexto: { fontSize: 11, fontWeight: "700" },
   chipGreen: { backgroundColor: "#EAF3DE", borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
   chipGreenTexto: { fontSize: 11, fontWeight: "700", color: "#27500A" },
   chipAmber: { backgroundColor: "#FAEEDA", borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },

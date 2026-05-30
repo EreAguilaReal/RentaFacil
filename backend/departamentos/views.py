@@ -1,38 +1,71 @@
 from rest_framework import viewsets
-from .models import Departamento
-from .serializers import DepartamentoSerializer
+from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework.permissions import AllowAny
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from .serializers import DepartamentoSerializer
+from .models import Departamento
+from usuarios.models import Usuario
 
-class DepartamentoViewSet(viewsets.ReadOnlyModelViewSet):
+
+class DepartamentoViewSet(viewsets.ModelViewSet):
+
+    queryset = Departamento.objects.all()
+
     serializer_class = DepartamentoSerializer
 
-    def get_queryset(self):
-        qs = Departamento.objects.filter(activo=True)
-        
-        precio_max   = self.request.query_params.get('precio_max')
-        tipo_renta   = self.request.query_params.get('tipo_renta')
-        pet_friendly = self.request.query_params.get('pet_friendly')
-        amueblado    = self.request.query_params.get('amueblado')
-        internet     = self.request.query_params.get('internet')
-        estacionamiento = self.request.query_params.get('estacionamiento')
-        cocina       = self.request.query_params.get('cocina')
+    permission_classes = [AllowAny]
 
-        if precio_max:
-            qs = qs.filter(precio__lte=precio_max)
-        if tipo_renta:
-            qs = qs.filter(tipo_renta=tipo_renta)
-        if pet_friendly == 'true':
-            qs = qs.filter(pet_friendly=True)
-        if amueblado == 'true':
-            qs = qs.filter(amueblado=True)
-        if internet == 'true':
-            qs = qs.filter(internet=True)
-        if estacionamiento == 'true':
-            qs = qs.filter(estacionamiento=True)
-        if cocina == 'true':
-            qs = qs.filter(cocina=True)
+    parser_classes = [
+        MultiPartParser,
+        FormParser,
+        JSONParser
+    ]
+
+    def perform_create(self, serializer):
+
+        arrendador_id = self.request.data.get("arrendador")
+
+        try:
+            arrendador = Usuario.objects.get(id=arrendador_id)
+        except Usuario.DoesNotExist:
+            arrendador = None
+
+        serializer.save(arrendador=arrendador)
+
+    def get_queryset(self):
+
+        qs = Departamento.objects.filter(
+            activo=True
+        )
+
+        disponible = self.request.query_params.get(
+            'disponible'
+        )
+
+        alcaldia = self.request.query_params.get(
+            'alcaldia'
+        )
+
+        tipo = self.request.query_params.get(
+            'tipo_renta'
+        )
+
+        if disponible:
+            qs = qs.filter(
+                disponible=disponible.lower() == 'true'
+            )
+
+        if alcaldia:
+            qs = qs.filter(
+                alcaldia__icontains=alcaldia
+            )
+
+        if tipo:
+            qs = qs.filter(
+                tipo_renta=tipo
+            )
 
         return qs
     

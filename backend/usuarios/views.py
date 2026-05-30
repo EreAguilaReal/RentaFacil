@@ -22,6 +22,7 @@ def obtener_usuario(request, id):
             'documento_verificacion':  usuario.documento_verificacion.url
                 if usuario.documento_verificacion else None,
             'verificado': usuario.verificado,
+            'estado_verificacion': usuario.estado_verificacion,
         })
     except Usuario.DoesNotExist:
         return Response({'error': 'No encontrado'}, status=404)
@@ -122,6 +123,7 @@ def login_usuario(request):
     'tipo_usuario':            usuario.tipo_usuario,
     'documento_verificacion':  str(usuario.documento_verificacion) if usuario.documento_verificacion else None,
     'verificado': usuario.verificado,
+    'estado_verificacion': usuario.estado_verificacion,
     }, status=status.HTTP_200_OK)
 
 @api_view(['PATCH'])
@@ -166,29 +168,29 @@ def cambiar_password(request, id):
 # ── Verificar documento (Staff) ───────────────────────────────────
 @api_view(['PATCH'])
 def verificar_documento(request, id):
-    accion = request.data.get('accion')  # "aprobar" | "rechazar"
+    accion = request.data.get('accion')
     if accion not in ('aprobar', 'rechazar'):
-        return Response({'error': 'Acción inválida'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'Acción inválida'}, status=400)
 
     try:
         usuario = Usuario.objects.get(id=id)
     except Usuario.DoesNotExist:
-        return Response({'error': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'error': 'Usuario no encontrado'}, status=404)
 
     if accion == 'aprobar':
-        usuario.verificado = True
-        # Conserva el archivo como evidencia, solo marca verificado
+        usuario.verificado           = True
+        usuario.estado_verificacion  = 'aprobado'
     else:
-        # Rechazar: elimina el documento y deja al usuario volver a subir uno
         if usuario.documento_verificacion:
             ruta = os.path.join(settings.MEDIA_ROOT, str(usuario.documento_verificacion))
             if os.path.exists(ruta):
                 os.remove(ruta)
         usuario.documento_verificacion = None
-        usuario.verificado = False
+        usuario.verificado             = False
+        usuario.estado_verificacion    = 'rechazado'
 
     usuario.save()
-    return Response({'mensaje': f'Documento {accion}do correctamente'}, status=status.HTTP_200_OK)
+    return Response({'mensaje': f'Documento {accion}do correctamente'}, status=200)
 
 
 # ── Documentos pendientes (Staff) ─────────────────────────────────

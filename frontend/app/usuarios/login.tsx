@@ -103,7 +103,6 @@ export default function Login() {
       setErrores({ correo: data.error ?? "Credenciales incorrectas" });
       return;
     }
-
     login(data);
     router.replace("/(tabs)");
 
