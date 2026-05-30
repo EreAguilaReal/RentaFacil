@@ -12,30 +12,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { obtenerDepartamento } from "../../services/api";
+import { obtenerDepartamento, Departamento } from "../../services/api";
+
+// Y borra el type Depa local
 
 const { width } = Dimensions.get("window");
-
-// ── Tipos ─────────────────────────────────────────────────────────
-type Depa = {
-  id: string;
-  titulo: string;
-  descripcion: string;
-  colonia: string;
-  alcaldia: string;
-  direccion: string;
-  metro_cercano: string;
-  precio: number;
-  cuartos: number;
-  imagen: string;
-  amueblado: boolean;
-  internet: boolean;
-  estacionamiento: boolean;
-  pet_friendly: boolean;
-  cocina: boolean;
-  tipo_renta: string;
-  disponible: boolean;
-};
 
 // ── Íconos top bar ────────────────────────────────────────────────
 const TOP_ICONS = [
@@ -58,7 +39,7 @@ export default function DetalleDepa() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
 
-  const [depa, setDepa]               = useState<Depa | null>(null);
+  const [depa, setDepa]               = useState<Departamento | null>(null);
   const [cargando, setCargando]       = useState(true);
   const [modalOcupado, setModalOcupado] = useState(false);
   const [mostrarTodas, setMostrarTodas] = useState(false);
