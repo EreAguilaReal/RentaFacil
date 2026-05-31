@@ -57,10 +57,11 @@ function FilaDato({ emoji, label, valor }: { emoji: string; label: string; valor
 }
 
 function Estrellas({ valor }: { valor: number | null | undefined }) {
+  const num = valor != null ? parseFloat(String(valor)) : null;
   return (
     <Text style={{ fontSize: 13, color: "#f4a500" }}>
-      {valor != null
-        ? `${"⭐".repeat(Math.round(valor))} ${valor.toFixed(1)}`
+      {num != null && !isNaN(num)
+        ? `${"⭐".repeat(Math.round(num))} ${num.toFixed(1)}`
         : "Sin calificación"}
     </Text>
   );
@@ -169,7 +170,7 @@ function VistaArrendatario({ depas, cargando, router }: {
             {d.rentado_hasta && (
               <Text style={styles.depMeta}>📅 Rentado hasta: {d.rentado_hasta}</Text>
             )}
-            {d.calificacion !== undefined && <Estrellas valor={d.calificacion} />}
+            {d.calificacion != null && <Estrellas valor={d.calificacion} />}
             <View style={styles.accionesDepRow}>
               <TouchableOpacity
                 style={[styles.btnAccion, styles.btnDanger]}
