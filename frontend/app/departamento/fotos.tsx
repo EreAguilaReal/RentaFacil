@@ -44,7 +44,6 @@ const AMENIDADES = [
 // ── Íconos top bar ────────────────────────────────────────────────
 const TOP_ICONS = [
   { key: "perfil",    emoji: "👤" },
-  { key: "favoritos", emoji: "🤍" },
   { key: "chat",      emoji: "💬" },
   { key: "ajustes",   emoji: "⚙️" },
 ];

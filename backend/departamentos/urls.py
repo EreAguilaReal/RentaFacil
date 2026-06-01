@@ -12,4 +12,8 @@ urlpatterns = [
 
 urlpatterns += [
     path('departamentos/por-usuario/', dep_views.departamentos_por_usuario),
+    path("departamentos/favoritos/<int:usuario_id>/",          dep_views.listar_favoritos),
+    path("departamentos/favoritos/<int:usuario_id>/ids/",      dep_views.ids_favoritos),
+    path("departamentos/favoritos/<int:usuario_id>/agregar/",  dep_views.agregar_favorito),
+    path("departamentos/favoritos/<int:usuario_id>/<int:depa_id>/eliminar/", dep_views.eliminar_favorito),
 ]

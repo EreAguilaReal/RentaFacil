@@ -32,7 +32,7 @@ export default function ChipsFiltro({ chips = CHIPS_DEFAULT }: ChipsFiltroProps)
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      style={styles.scroll}
+      style={[styles.scroll, { overflow: "visible" }]}
       contentContainerStyle={styles.content}
     >
       {chips.map((chip) => {
@@ -55,15 +55,17 @@ export default function ChipsFiltro({ chips = CHIPS_DEFAULT }: ChipsFiltroProps)
 }
 
 const styles = StyleSheet.create({
-  scroll: { marginTop: 14 },
-  content: { paddingHorizontal: 20, gap: 8 },
+  scroll: { marginTop: 10, minHeight: 30, maxHeight: 30},
+  content: { paddingHorizontal: 20, gap: 8 , alignItems: "center"},
   chip: {
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: "#fff",
-    borderRadius: 20,
+    borderRadius: 15,
     paddingHorizontal: 14,
-    paddingVertical: 8,
     borderWidth: 1.5,
     borderColor: "#e0dcd8",
+    height: 30,
   },
   chipActivo: {
     backgroundColor: "#e63946",

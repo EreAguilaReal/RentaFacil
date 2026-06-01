@@ -12,11 +12,16 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { obtenerDepartamento, Departamento } from "../../services/api";
+import {
+  obtenerDepartamento,
+  Departamento,
+  obtenerIdsFavoritos,
+  toggleFavorito,
+} from "../../services/api";
+import { useAuth } from "../context/AuthContext";
 
 const { width } = Dimensions.get("window");
 
-// ── Tipos ─────────────────────────────────────────────────────────
 type Opinion = {
   id: number;
   nombre: string;
@@ -25,7 +30,6 @@ type Opinion = {
   meses: number;
 };
 
-// ── Datos simulados de opiniones ──────────────────────────────────
 const OPINIONES_MOCK: Opinion[] = [
   { id: 1, nombre: "Juan Pérez",   calificacion: 4, comentario: "Increíble ubicación, buen precio, recámaras limpias, lo volvería a rentar", meses: 9 },
   { id: 2, nombre: "Michel Gámez", calificacion: 4, comentario: "Excelente departamento, cuenta con todo lo que dice la publicación",         meses: 6 },
@@ -34,15 +38,13 @@ const OPINIONES_MOCK: Opinion[] = [
   { id: 5, nombre: "Carlos Ruiz",  calificacion: 4, comentario: "Buen departamento, cerca del metro, recomendado",                             meses: 2 },
 ];
 
-// ── Íconos top bar ────────────────────────────────────────────────
+// ── TOP_ICONS solo con los íconos estáticos (favorito se maneja aparte) ──
 const TOP_ICONS = [
-  { key: "perfil",    emoji: "👤" },
-  { key: "favoritos", emoji: "🤍" },
-  { key: "chat",      emoji: "💬" },
-  { key: "ajustes",   emoji: "⚙️" },
+  { key: "perfil",  emoji: "👤" },
+  { key: "chat",    emoji: "💬" },
+  { key: "ajustes", emoji: "⚙️" },
 ];
 
-// ── Amenidades ────────────────────────────────────────────────────
 const AMENIDADES = [
   { key: "amueblado",       label: "Amueblado",      emoji: "🛋" },
   { key: "internet",        label: "Internet",        emoji: "📶" },
@@ -51,7 +53,6 @@ const AMENIDADES = [
   { key: "cocina",          label: "Cocina",          emoji: "🍳" },
 ];
 
-// ── Estrellas ─────────────────────────────────────────────────────
 const Estrellas = ({ calificacion, size = 18 }: { calificacion: number; size?: number }) => (
   <View style={{ flexDirection: "row", gap: 2 }}>
     {[1, 2, 3, 4, 5].map((i) => (
@@ -60,7 +61,6 @@ const Estrellas = ({ calificacion, size = 18 }: { calificacion: number; size?: n
   </View>
 );
 
-// ── Tarjeta de opinión ────────────────────────────────────────────
 const TarjetaOpinion = ({ op }: { op: Opinion }) => (
   <View style={styles.opinionCard}>
     <View style={styles.opinionHeader}>
@@ -78,6 +78,7 @@ const TarjetaOpinion = ({ op }: { op: Opinion }) => (
 export default function DetalleDepa() {
   const { id } = useLocalSearchParams();
   const router  = useRouter();
+  const { usuario } = useAuth();
 
   const [depa, setDepa]                     = useState<Departamento | null>(null);
   const [cargando, setCargando]             = useState(true);
@@ -86,7 +87,9 @@ export default function DetalleDepa() {
   const [iconActivo, setIconActivo]         = useState<string | null>(null);
   const [opinionIndex, setOpinionIndex]     = useState(0);
   const [mostrarTodasOp, setMostrarTodasOp] = useState(false);
+  const [esFavorito, setEsFavorito]         = useState(false);
 
+  // Carga departamento
   useEffect(() => {
     if (id) {
       obtenerDepartamento(Number(id))
@@ -94,6 +97,20 @@ export default function DetalleDepa() {
         .catch(() => setCargando(false));
     }
   }, [id]);
+
+  // Verifica si es favorito una vez que depa carga
+  useEffect(() => {
+    if (!usuario || !depa) return;
+    obtenerIdsFavoritos(usuario.id)
+      .then(ids => setEsFavorito(ids.includes(depa.id)))
+      .catch(() => {});
+  }, [usuario?.id, depa?.id]);
+
+  const handleToggleFavorito = async () => {
+    if (!usuario || !depa) return;
+    await toggleFavorito(usuario.id, depa.id, esFavorito);
+    setEsFavorito(prev => !prev);
+  };
 
   if (cargando) {
     return (
@@ -118,7 +135,7 @@ export default function DetalleDepa() {
   const amenidadesActivas   = AMENIDADES.filter((a) => (depa as any)[a.key]);
   const amenidadesMostradas = mostrarTodas ? amenidadesActivas : amenidadesActivas.slice(0, 3);
   const opinionesMostradas  = mostrarTodasOp ? OPINIONES_MOCK : OPINIONES_MOCK.slice(opinionIndex, opinionIndex + 3);
-  const calificacionPromedio = (OPINIONES_MOCK.reduce((s, o) => s + o.calificacion, 0) / OPINIONES_MOCK.length);
+  const calificacionPromedio = OPINIONES_MOCK.reduce((s, o) => s + o.calificacion, 0) / OPINIONES_MOCK.length;
 
   const handleApartar = () => {
     if (!depa.disponible) setModalOcupado(true);
@@ -132,6 +149,7 @@ export default function DetalleDepa() {
       {/* ── Top Bar ── */}
       <View style={styles.topBar}>
         <View style={styles.topIconsLeft}>
+          {/* Íconos estáticos */}
           {TOP_ICONS.map((ic) => (
             <TouchableOpacity
               key={ic.key}
@@ -142,6 +160,14 @@ export default function DetalleDepa() {
               <Text style={styles.topIconEmoji}>{ic.emoji}</Text>
             </TouchableOpacity>
           ))}
+          {/* Botón favorito dinámico */}
+          <TouchableOpacity
+            style={[styles.topIconBtn, esFavorito && styles.topIconBtnActivo]}
+            onPress={handleToggleFavorito}
+            activeOpacity={0.75}
+          >
+            <Text style={styles.topIconEmoji}>{esFavorito ? "❤️" : "🤍"}</Text>
+          </TouchableOpacity>
         </View>
         <View style={styles.topLogos}>
           <View style={styles.logoBadge}>
@@ -178,7 +204,10 @@ export default function DetalleDepa() {
             source={{ uri: depa.imagen || "https://via.placeholder.com/400x250" }}
             style={styles.imagen}
           />
-          <TouchableOpacity style={styles.fotosBtn} onPress={() => router.push(`/departamento/fotos?id=${depa.id}`)}>
+          <TouchableOpacity
+            style={styles.fotosBtn}
+            onPress={() => router.push(`/departamento/fotos?id=${depa.id}`)}
+          >
             <Text style={styles.fotosBtnTexto}>Toca para ver más fotos</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.infoBtn}>
@@ -189,7 +218,10 @@ export default function DetalleDepa() {
         {/* ── Info principal ── */}
         <View style={styles.infoContainer}>
           <View style={styles.tituloRow}>
-            <TouchableOpacity><Text style={styles.favEmoji}>🤍</Text></TouchableOpacity>
+            {/* Favorito conectado también aquí */}
+            <TouchableOpacity onPress={handleToggleFavorito}>
+              <Text style={styles.favEmoji}>{esFavorito ? "❤️" : "🤍"}</Text>
+            </TouchableOpacity>
             <Text style={styles.titulo} numberOfLines={2}>{depa.titulo}</Text>
             <Text style={styles.vistasEmoji}>👁</Text>
           </View>
@@ -219,8 +251,13 @@ export default function DetalleDepa() {
           ))}
           <View style={styles.botonesRow}>
             {amenidadesActivas.length > 3 && (
-              <TouchableOpacity style={styles.btnSecundario} onPress={() => setMostrarTodas(!mostrarTodas)}>
-                <Text style={styles.btnTexto}>{mostrarTodas ? "Ver menos" : "Mostrar todas las amenidades"}</Text>
+              <TouchableOpacity
+                style={styles.btnSecundario}
+                onPress={() => setMostrarTodas(!mostrarTodas)}
+              >
+                <Text style={styles.btnTexto}>
+                  {mostrarTodas ? "Ver menos" : "Mostrar todas las amenidades"}
+                </Text>
               </TouchableOpacity>
             )}
             <TouchableOpacity style={styles.btnPrimario} onPress={handleApartar}>
@@ -240,7 +277,9 @@ export default function DetalleDepa() {
           <View style={styles.mapaContainer}>
             <View style={styles.mapaFondo}>
               <Text style={styles.mapaNota}>🗺 Mapa — se conectará a Google Maps</Text>
-              <View style={styles.mapaPin}><Text style={styles.mapaPinTexto}>📍</Text></View>
+              <View style={styles.mapaPin}>
+                <Text style={styles.mapaPinTexto}>📍</Text>
+              </View>
             </View>
             <TouchableOpacity style={styles.mapaRutasBtn}>
               <Text style={styles.mapaRutasBtnTexto}>Toca para generar rutas</Text>
@@ -263,7 +302,10 @@ export default function DetalleDepa() {
                 <Text style={styles.contactoTexto}>🌐 Sitio Web</Text>
               </TouchableOpacity>
             </View>
-            <TouchableOpacity style={styles.agendarBtn} onPress={() => router.push(`/departamento/agendar?id=${depa.id}`)}>
+            <TouchableOpacity
+              style={styles.agendarBtn}
+              onPress={() => router.push(`/departamento/agendar?id=${depa.id}`)}
+            >
               <Text style={styles.agendarBtnTexto}>Agendar visita al departamento</Text>
             </TouchableOpacity>
           </View>
@@ -278,12 +320,19 @@ export default function DetalleDepa() {
           </View>
 
           <Text style={[styles.seccionTitulo, { marginTop: 20 }]}>Opiniones Y Sugerencias:</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.opinionesScroll}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.opinionesScroll}
+          >
             {opinionesMostradas.map((op) => <TarjetaOpinion key={op.id} op={op} />)}
           </ScrollView>
 
           <View style={styles.carruselNav}>
-            <TouchableOpacity style={styles.carruselBtn} onPress={() => setOpinionIndex(Math.max(0, opinionIndex - 1))}>
+            <TouchableOpacity
+              style={styles.carruselBtn}
+              onPress={() => setOpinionIndex(Math.max(0, opinionIndex - 1))}
+            >
               <Text style={styles.carruselBtnTexto}>←</Text>
             </TouchableOpacity>
             <View style={styles.carruselDots}>
@@ -291,13 +340,21 @@ export default function DetalleDepa() {
                 <View key={i} style={[styles.dot, opinionIndex === i && styles.dotActivo]} />
               ))}
             </View>
-            <TouchableOpacity style={styles.carruselBtn} onPress={() => setOpinionIndex(Math.min(OPINIONES_MOCK.length - 1, opinionIndex + 1))}>
+            <TouchableOpacity
+              style={styles.carruselBtn}
+              onPress={() => setOpinionIndex(Math.min(OPINIONES_MOCK.length - 1, opinionIndex + 1))}
+            >
               <Text style={styles.carruselBtnTexto}>→</Text>
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={styles.btnSecundario} onPress={() => setMostrarTodasOp(!mostrarTodasOp)}>
-            <Text style={styles.btnTexto}>{mostrarTodasOp ? "Ver menos evaluaciones" : "Mostrar el resto de evaluaciones"}</Text>
+          <TouchableOpacity
+            style={styles.btnSecundario}
+            onPress={() => setMostrarTodasOp(!mostrarTodasOp)}
+          >
+            <Text style={styles.btnTexto}>
+              {mostrarTodasOp ? "Ver menos evaluaciones" : "Mostrar el resto de evaluaciones"}
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -354,7 +411,10 @@ export default function DetalleDepa() {
               <TouchableOpacity style={styles.modalBtn} onPress={() => setModalOcupado(false)}>
                 <Text style={styles.modalBtnTexto}>Regresar</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.modalBtn} onPress={() => { setModalOcupado(false); router.back(); }}>
+              <TouchableOpacity
+                style={styles.modalBtn}
+                onPress={() => { setModalOcupado(false); router.back(); }}
+              >
                 <Text style={styles.modalBtnTexto}>Continuar</Text>
               </TouchableOpacity>
             </View>
@@ -365,12 +425,10 @@ export default function DetalleDepa() {
   );
 }
 
-// ── Estilos ───────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f7f4f0" },
   cargandoContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
   cargandoTexto: { fontSize: 16, color: "#888" },
-
   topBar: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     paddingHorizontal: 16, paddingVertical: 10, backgroundColor: "#f7f4f0",
@@ -388,7 +446,6 @@ const styles = StyleSheet.create({
   logoBadge: { backgroundColor: "#8B0000", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
   logoTexto: { color: "#fff", fontWeight: "800", fontSize: 12, letterSpacing: 0.5 },
   separador: { height: 1, backgroundColor: "#e0dcd8" },
-
   accionesBar: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     paddingHorizontal: 16, paddingVertical: 10,
@@ -401,7 +458,6 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: "#e0dcd8",
   },
   accionEmoji: { fontSize: 17 },
-
   imagenContainer: { position: "relative", marginHorizontal: 16, borderRadius: 18, overflow: "hidden" },
   imagen: { width: "100%", height: 220, backgroundColor: "#c0cfff" },
   fotosBtn: {
@@ -416,7 +472,6 @@ const styles = StyleSheet.create({
     width: 32, height: 32, justifyContent: "center", alignItems: "center",
   },
   infoBtnTexto: { fontSize: 16 },
-
   infoContainer: { paddingHorizontal: 20, paddingTop: 16 },
   tituloRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   favEmoji: { fontSize: 22 },
@@ -437,7 +492,6 @@ const styles = StyleSheet.create({
   amenidadEmoji: { fontSize: 22, width: 32 },
   amenidadLabel: { fontSize: 15, color: "#333", fontWeight: "500" },
   botonesRow: { flexDirection: "row", gap: 10, marginTop: 20, flexWrap: "wrap" },
-
   seccion: {
     paddingHorizontal: 20, paddingTop: 24,
     borderTopWidth: 1, borderTopColor: "#e0dcd8", marginTop: 16,
@@ -445,7 +499,6 @@ const styles = StyleSheet.create({
   seccionHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   seccionTitulo: { fontSize: 18, fontWeight: "900", color: "#1a1a1a", marginBottom: 12 },
   vistasTexto: { fontSize: 15, fontWeight: "700", color: "#555" },
-
   ubicacionDireccion: { fontSize: 14, color: "#555", marginBottom: 4 },
   mapaContainer: { marginTop: 12, borderRadius: 16, overflow: "hidden" },
   mapaFondo: {
@@ -461,7 +514,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.6)", paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
   },
   mapaRutasBtnTexto: { color: "#fff", fontWeight: "700", fontSize: 13 },
-
   contactoGrid: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
   contactoIzq: { flex: 1, gap: 8 },
   contactoItem: {
@@ -476,10 +528,8 @@ const styles = StyleSheet.create({
     justifyContent: "center", alignItems: "center",
   },
   agendarBtnTexto: { fontSize: 14, fontWeight: "800", color: "#7a6000", textAlign: "center", lineHeight: 20 },
-
   calificacionRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 8 },
   calificacionNumero: { fontSize: 18, fontWeight: "700", color: "#555" },
-
   opinionesScroll: { gap: 12, paddingVertical: 8 },
   opinionCard: {
     width: width * 0.6, backgroundColor: "#fff", borderRadius: 14,
@@ -494,7 +544,6 @@ const styles = StyleSheet.create({
   opinionNombre: { fontSize: 13, fontWeight: "700", color: "#1a1a1a", flex: 1 },
   opinionComentario: { fontSize: 12, color: "#555", lineHeight: 18, marginTop: 6 },
   opinionMeses: { fontSize: 11, color: "#aaa", marginTop: 8 },
-
   carruselNav: {
     flexDirection: "row", justifyContent: "space-between",
     alignItems: "center", marginTop: 12, marginBottom: 12,
@@ -508,7 +557,6 @@ const styles = StyleSheet.create({
   carruselDots: { flexDirection: "row", gap: 6 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#e0dcd8" },
   dotActivo: { backgroundColor: "#e63946", width: 20 },
-
   arrendadorCard: {
     flexDirection: "row", backgroundColor: "#fff", borderRadius: 16,
     padding: 16, gap: 16, shadowColor: "#000",
@@ -541,7 +589,6 @@ const styles = StyleSheet.create({
   btnContactarArrendador: {
     backgroundColor: "#e8e4de", borderRadius: 14, paddingVertical: 14, alignItems: "center",
   },
-
   btnSecundario: {
     flex: 1, backgroundColor: "#1a3a8f", borderRadius: 14,
     paddingVertical: 14, alignItems: "center", minWidth: 140,
@@ -551,14 +598,12 @@ const styles = StyleSheet.create({
     paddingVertical: 14, alignItems: "center", minWidth: 120,
   },
   btnTexto: { color: "#fff", fontWeight: "800", fontSize: 13 },
-
   precioBar: {
     position: "absolute", bottom: 0, left: 0, right: 0,
     backgroundColor: "#d0d8e8", paddingVertical: 16, alignItems: "center",
     borderTopWidth: 1, borderTopColor: "#c0c8d8",
   },
   precioTexto: { fontSize: 20, fontWeight: "900", color: "#1a1a1a" },
-
   modalOverlay: {
     flex: 1, backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center", alignItems: "center", paddingHorizontal: 32,

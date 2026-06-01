@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Departamento
+from .models import Departamento, Favorito
 
 
 class DepartamentoSerializer(serializers.ModelSerializer):
@@ -41,3 +41,12 @@ class DepartamentoSerializer(serializers.ModelSerializer):
             'fecha_actualizacion',
             'vistas_mes',
         ]
+
+# departamentos/serializers.py
+class FavoritoSerializer(serializers.ModelSerializer):
+    departamento = DepartamentoSerializer(read_only=True)
+    departamento_id = serializers.IntegerField(write_only=True)
+
+    class Meta:
+        model  = Favorito
+        fields = ["id", "departamento", "departamento_id", "fecha"]

@@ -4,8 +4,8 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-from .serializers import DepartamentoSerializer
-from .models import Departamento
+from .serializers import DepartamentoSerializer, FavoritoSerializer
+from .models import Departamento, Favorito
 from usuarios.models import Usuario
 
 
@@ -102,3 +102,41 @@ def departamentos_por_usuario(request):
         for d in qs
     ]
     return Response(data, status=status.HTTP_200_OK)
+
+@api_view(["GET"])
+def listar_favoritos(request, usuario_id):
+    favs = Favorito.objects.filter(usuario_id=usuario_id).select_related("departamento")
+    data = FavoritoSerializer(favs, many=True).data
+    return Response(data)
+
+@api_view(["POST"])
+def agregar_favorito(request, usuario_id):
+    depa_id = request.data.get("departamento_id")
+    if not depa_id:
+        return Response({"error": "departamento_id requerido"}, status=400)
+    fav, creado = Favorito.objects.get_or_create(
+        usuario_id=usuario_id,
+        departamento_id=depa_id
+    )
+    return Response(
+        {"mensaje": "Agregado" if creado else "Ya estaba en favoritos"},
+        status=201 if creado else 200
+    )
+
+@api_view(["DELETE"])
+def eliminar_favorito(request, usuario_id, depa_id):
+    eliminados, _ = Favorito.objects.filter(
+        usuario_id=usuario_id,
+        departamento_id=depa_id
+    ).delete()
+    if eliminados:
+        return Response({"mensaje": "Eliminado"})
+    return Response({"error": "No encontrado"}, status=404)
+
+@api_view(["GET"])
+def ids_favoritos(request, usuario_id):
+    """Devuelve solo los IDs para saber rápido cuáles están en favoritos."""
+    ids = Favorito.objects.filter(usuario_id=usuario_id).values_list(
+        "departamento_id", flat=True
+    )
+    return Response(list(ids))

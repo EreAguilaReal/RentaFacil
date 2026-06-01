@@ -50,46 +50,125 @@ const MapaSimulado = ({ depas }: { depas: Departamento[] }) => (
 );
 
 // ── Tarjeta de departamento ───────────────────────────────────────
-const TarjetaDepa = ({ item }: { item: Departamento }) => (
-  <TouchableOpacity
-    style={styles.tarjeta}
-    activeOpacity={0.85}
-    onPress={() => router.push(`/departamento/${item.id}`)}
-  >
-    <Image source={{ uri: item.imagen }} style={styles.tarjetaImagen} />
-    <View style={styles.tarjetaBadgeContainer}>
-      {item.tipo_renta === "solo_mujeres" && (
-        <View style={[styles.badge, { backgroundColor: "#ff6b9d" }]}>
-          <Text style={styles.badgeTexto}>Solo mujeres</Text>
-        </View>
-      )}
-      {item.pet_friendly && (
-        <View style={[styles.badge, { backgroundColor: "#4caf50" }]}>
-          <Text style={styles.badgeTexto}>Pet friendly</Text>
-        </View>
-      )}
-    </View>
-    <View style={styles.tarjetaInfo}>
-      <Text style={styles.tarjetaTitulo} numberOfLines={1}>
-        {item.titulo}
-      </Text>
-      <Text style={styles.tarjetaColonia} numberOfLines={1}>
-        📍 {item.colonia}
-      </Text>
-      <Text style={styles.tarjetaMetro}>🚇 {item.metro_cercano}</Text>
-      <View style={styles.tarjetaFooter}>
-        <Text style={styles.tarjetaPrecio}>
-          ${item.precio.toLocaleString()}/mes
+const TarjetaDepa = ({ item }: { item: Departamento }) => {
+  const badges = [];
+
+  if (item.tipo_renta === "solo_mujeres") {
+    badges.push({
+      texto: "Solo mujeres",
+      color: "#ff6b9d",
+    });
+  }
+
+  if (item.tipo_renta === "solo_hombres") {
+    badges.push({
+      texto: "Solo hombres",
+      color: "#4a90e2",
+    });
+  }
+
+  if (item.pet_friendly) {
+    badges.push({
+      texto: "Pet friendly",
+      color: "#4caf50",
+    });
+  }
+
+  if (item.amueblado) {
+    badges.push({
+      texto: "Amueblado",
+      color: "#ff9800",
+    });
+  }
+
+  if (item.internet) {
+    badges.push({
+      texto: "Internet",
+      color: "#7b61ff",
+    });
+  }
+
+  if (item.estacionamiento) {
+    badges.push({
+      texto: "Parking",
+      color: "#607d8b",
+    });
+  }
+
+  const visibles = badges.slice(0, 2);
+  const extras = badges.length - 2;
+
+  return (
+    <TouchableOpacity
+      style={styles.tarjeta}
+      activeOpacity={0.85}
+      onPress={() => router.push(`/departamento/${item.id}`)}
+    >
+      <Image source={{ uri: item.imagen }} style={styles.tarjetaImagen} />
+
+      <View style={styles.tarjetaBadgeContainer}>
+        {visibles.map((b, i) => (
+          <View
+            key={i}
+            style={[
+              styles.badge,
+              { backgroundColor: b.color },
+            ]}
+          >
+            <Text style={styles.badgeTexto}>
+              {b.texto}
+            </Text>
+          </View>
+        ))}
+
+        {extras > 0 && (
+          <View
+            style={[
+              styles.badge,
+              { backgroundColor: "#444" },
+            ]}
+          >
+            <Text style={styles.badgeTexto}>
+              +{extras}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      <View style={styles.tarjetaInfo}>
+        <Text style={styles.tarjetaTitulo} numberOfLines={1}>
+          {item.titulo}
         </Text>
-        <View style={styles.tarjetaIconos}>
-          {item.amueblado       && <Text style={styles.iconoSmall}>🛋</Text>}
-          {item.internet        && <Text style={styles.iconoSmall}>📶</Text>}
-          {item.estacionamiento && <Text style={styles.iconoSmall}>🚗</Text>}
+
+        <Text style={styles.tarjetaColonia} numberOfLines={1}>
+          📍 {item.colonia}
+        </Text>
+
+        <Text style={styles.tarjetaMetro}>
+          🚇 {item.metro_cercano}
+        </Text>
+
+        <View style={styles.tarjetaFooter}>
+          <Text style={styles.tarjetaPrecio}>
+            ${item.precio.toLocaleString()}/mes
+          </Text>
+
+          <View style={styles.tarjetaIconos}>
+            {item.amueblado && (
+              <Text style={styles.iconoSmall}>🛋</Text>
+            )}
+            {item.internet && (
+              <Text style={styles.iconoSmall}>📶</Text>
+            )}
+            {item.estacionamiento && (
+              <Text style={styles.iconoSmall}>🚗</Text>
+            )}
+          </View>
         </View>
       </View>
-    </View>
-  </TouchableOpacity>
-);
+    </TouchableOpacity>
+  );
+};
 
 // ── Pantalla principal ────────────────────────────────────────────
 export default function HomeScreen() {
@@ -165,7 +244,55 @@ export default function HomeScreen() {
             pagingEnabled
             showsHorizontalScrollIndicator={false}
             keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
+            renderItem={({ item }) => {
+            const badges = [];
+
+            if (item.tipo_renta === "solo_mujeres") {
+              badges.push({
+                texto: "Solo mujeres",
+                color: "#ff6b9d",
+              });
+            }
+
+            if (item.tipo_renta === "solo_hombres") {
+              badges.push({
+                texto: "Solo hombres",
+                color: "#4a90e2",
+              });
+            }
+
+            if (item.pet_friendly) {
+              badges.push({
+                texto: "Pet friendly",
+                color: "#4caf50",
+              });
+            }
+
+            if (item.amueblado) {
+              badges.push({
+                texto: "Amueblado",
+                color: "#ff9800",
+              });
+            }
+
+            if (item.internet) {
+              badges.push({
+                texto: "Internet",
+                color: "#7b61ff",
+              });
+            }
+
+            if (item.estacionamiento) {
+              badges.push({
+                texto: "Parking",
+                color: "#607d8b",
+              });
+            }
+
+            const visibles = badges.slice(0, 2);
+            const extras = badges.length - 2;
+
+            return (
               <TouchableOpacity
                 style={styles.carouselCard}
                 activeOpacity={0.9}
@@ -175,14 +302,48 @@ export default function HomeScreen() {
                   source={{ uri: item.imagen }}
                   style={styles.carouselImagen}
                 />
+
+                <View style={styles.carouselBadgeContainer}>
+                  {visibles.map((b, i) => (
+                    <View
+                      key={i}
+                      style={[
+                        styles.carouselBadge,
+                        { backgroundColor: b.color },
+                      ]}
+                    >
+                      <Text style={styles.carouselBadgeTexto}>
+                        {b.texto}
+                      </Text>
+                    </View>
+                  ))}
+
+                  {extras > 0 && (
+                    <View
+                      style={[
+                        styles.carouselBadge,
+                        { backgroundColor: "#444" },
+                      ]}
+                    >
+                      <Text style={styles.carouselBadgeTexto}>
+                        +{extras}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
                 <View style={styles.carouselOverlay}>
-                  <Text style={styles.carouselTitulo}>{item.titulo}</Text>
+                  <Text style={styles.carouselTitulo}>
+                    {item.titulo}
+                  </Text>
+
                   <Text style={styles.carouselPrecio}>
                     ${item.precio.toLocaleString()}/mes
                   </Text>
                 </View>
               </TouchableOpacity>
-            )}
+            );
+          }}
             contentContainerStyle={{ paddingHorizontal: 20 }}
             snapToInterval={width - 56}
             decelerationRate="fast"
@@ -262,6 +423,26 @@ const styles = StyleSheet.create({
     backgroundColor: "#ddd",
   },
   carouselImagen: { width: "100%", height: 180 },
+  carouselBadgeContainer: {
+    position: "absolute",
+    top: 12,
+    left: 12,
+    flexDirection: "row",
+    zIndex: 10,
+  },
+
+  carouselBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    marginRight: 6,
+  },
+
+  carouselBadgeTexto: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "700",
+  },
   carouselOverlay: {
     position: "absolute",
     bottom: 0,
@@ -333,10 +514,17 @@ const styles = StyleSheet.create({
     top: 12,
     left: 12,
     flexDirection: "row",
-    gap: 6,
+    alignItems: "center",
+    flexWrap: "nowrap",
+    zIndex: 10,
   },
-  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
-  badgeTexto: { color: "#fff", fontSize: 11, fontWeight: "700" },
+  badge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    marginRight: 6,
+  },
+ badgeTexto: { color: "#fff", fontSize: 11, fontWeight: "700" },
   tarjetaInfo: { padding: 14 },
   tarjetaTitulo: { fontSize: 16, fontWeight: "800", color: "#1a1a1a" },
   tarjetaColonia: { fontSize: 13, color: "#777", marginTop: 4 },

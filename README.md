@@ -182,6 +182,8 @@ Consulta la **Guía de Estándares** del proyecto para las reglas de commits y P
 Proyecto para la materia **Formulación y Evaluación de Proyectos Informáticos**.
 
 ## Notas
+## ACTUALIZAR EL ARCHIVO FRONTEND/SERVICES/API CON LOS CAMBIOS MOSTRADOS EN API-EXAMPLE
+## HACER LO MISMO PARA EL ENV DEL BACKEND
 Instalar CORS para eliminar errores de fetch - Desde `RentaFacil/`:
 ```bash
 pip install django-cors-headers

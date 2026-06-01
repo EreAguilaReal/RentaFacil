@@ -37,3 +37,33 @@ export type Departamento = {
   pet_friendly?: boolean;
   cocina?: boolean;
 };
+
+export async function obtenerFavoritos(usuarioId: number): Promise<any[]> {
+  const r = await fetch(`${URL_BASE}/departamentos/favoritos/${usuarioId}/`);
+  if (!r.ok) throw new Error("Error al obtener favoritos");
+  return r.json();
+}
+
+export async function obtenerIdsFavoritos(usuarioId: number): Promise<number[]> {
+  const r = await fetch(`${URL_BASE}/departamentos/favoritos/${usuarioId}/ids/`);
+  if (!r.ok) return [];
+  return r.json();
+}
+
+export async function toggleFavorito(
+  usuarioId: number,
+  depaId: number,
+  esFavorito: boolean
+): Promise<void> {
+  if (esFavorito) {
+    await fetch(`${URL_BASE}/departamentos/favoritos/${usuarioId}/${depaId}/eliminar/`, {
+      method: "DELETE",
+    });
+  } else {
+    await fetch(`${URL_BASE}/departamentos/favoritos/${usuarioId}/agregar/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ departamento_id: depaId }),
+    });
+  }
+}

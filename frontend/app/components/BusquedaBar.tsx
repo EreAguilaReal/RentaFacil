@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     paddingHorizontal: 20,
-    marginTop: 12,
+    marginTop: 10,
     gap: 10,
   },
   searchBox: {
@@ -69,7 +69,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 14,
     paddingHorizontal: 14,
-    paddingVertical: 12,
     shadowColor: "#000",
     shadowOpacity: 0.06,
     shadowRadius: 8,

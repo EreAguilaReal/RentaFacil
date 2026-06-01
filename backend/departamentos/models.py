@@ -93,3 +93,22 @@ class Departamento(models.Model):
 
     def __str__(self):
         return f'{self.titulo} - ${self.precio}/mes'
+    
+class Favorito(models.Model):
+    usuario      = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="favoritos"
+    )
+    departamento = models.ForeignKey(
+        Departamento,
+        on_delete=models.CASCADE,
+        related_name="favoritos"
+    )
+    fecha        = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("usuario", "departamento")
+
+    def __str__(self):
+        return f"{self.usuario} → {self.departamento}"
