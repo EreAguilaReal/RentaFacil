@@ -285,6 +285,30 @@ function VistaStaff({ router }: { router: any }) {
   const [depas, setDepas] = useState<Departamento[]>([]);
   const [cargando, setCargando] = useState(true);
 
+  // ── Estado del modal de confirmación ──
+  const [modal, setModal] = useState<{
+    visible: boolean;
+    emoji: string;
+    titulo: string;
+    texto: string;
+    colorBtn: string;
+    labelBtn: string;
+    onConfirmar: () => void;
+  }>({
+    visible: false,
+    emoji: "",
+    titulo: "",
+    texto: "",
+    colorBtn: "#1a3a8f",
+    labelBtn: "",
+    onConfirmar: () => {},
+  });
+
+  const cerrarModal = () => setModal(m => ({ ...m, visible: false }));
+
+  const confirmar = (opciones: Omit<typeof modal, "visible">) =>
+    setModal({ visible: true, ...opciones });
+
   useEffect(() => {
     Promise.all([
       fetch(`${URL_BASE}/usuarios/documentos-pendientes/`).then(r => r.json()),
@@ -305,6 +329,37 @@ function VistaStaff({ router }: { router: any }) {
 
   return (
     <>
+      {/* ── Modal de confirmación reutilizable ── */}
+      <Modal
+        visible={modal.visible}
+        transparent
+        animationType="fade"
+        onRequestClose={cerrarModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalEmoji}>{modal.emoji}</Text>
+            <Text style={styles.modalTitulo}>{modal.titulo}</Text>
+            <Text style={styles.modalTexto}>{modal.texto}</Text>
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 4 }}>
+              <TouchableOpacity
+                style={[styles.modalBtn, { backgroundColor: "#e0dcd8", flex: 1 }]}
+                onPress={cerrarModal}
+              >
+                <Text style={[styles.modalBtnTexto, { color: "#333" }]}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalBtn, { backgroundColor: modal.colorBtn, flex: 1 }]}
+                onPress={() => { cerrarModal(); modal.onConfirmar(); }}
+              >
+                <Text style={styles.modalBtnTexto}>{modal.labelBtn}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Documentos pendientes ── */}
       <View style={styles.seccionContainer}>
         <Text style={styles.seccionTitulo}>📄 Documentos pendientes</Text>
         {cargando ? (
@@ -322,21 +377,40 @@ function VistaStaff({ router }: { router: any }) {
                 <Text style={styles.docSub}>{TIPO_LABEL[doc.tipo_usuario] ?? doc.tipo_usuario}</Text>
               </View>
               <View style={styles.docBtns}>
+                {/* Ver — sin confirmación */}
                 <TouchableOpacity
                   style={styles.btnDoc}
                   onPress={() => Linking.openURL(`${MEDIA_BASE}${doc.url}`)}
                 >
                   <Text style={styles.btnDocTexto}>👁</Text>
                 </TouchableOpacity>
+
+                {/* Aprobar */}
                 <TouchableOpacity
                   style={[styles.btnDoc, styles.btnDocGreen]}
-                  onPress={() => accionDoc(doc.id, "aprobar")}
+                  onPress={() => confirmar({
+                    emoji: "✅",
+                    titulo: "Aprobar documento",
+                    texto: `¿Confirmas que el documento de ${doc.usuario_nombre} es válido?`,
+                    colorBtn: "#27500A",
+                    labelBtn: "Aprobar",
+                    onConfirmar: () => accionDoc(doc.id, "aprobar"),
+                  })}
                 >
                   <Text style={styles.btnDocTexto}>✓</Text>
                 </TouchableOpacity>
+
+                {/* Rechazar */}
                 <TouchableOpacity
                   style={[styles.btnDoc, styles.btnDocRed]}
-                  onPress={() => accionDoc(doc.id, "rechazar")}
+                  onPress={() => confirmar({
+                    emoji: "❌",
+                    titulo: "Rechazar documento",
+                    texto: `¿Confirmas que el documento de ${doc.usuario_nombre} no es válido?`,
+                    colorBtn: "#e63946",
+                    labelBtn: "Rechazar",
+                    onConfirmar: () => accionDoc(doc.id, "rechazar"),
+                  })}
                 >
                   <Text style={styles.btnDocTexto}>✕</Text>
                 </TouchableOpacity>
@@ -346,6 +420,7 @@ function VistaStaff({ router }: { router: any }) {
         )}
       </View>
 
+      {/* ── Rentas activas — sin cambios ── */}
       <View style={styles.seccionContainer}>
         <Text style={styles.seccionTitulo}>🏢 Rentas activas</Text>
         {cargando ? (
@@ -372,7 +447,7 @@ function VistaStaff({ router }: { router: any }) {
                 )}
                 {d.calificacion !== null && (
                   <View style={styles.chipAmber}>
-                    <Text style={styles.chipAmberTexto}>{Number(d.calificacion).toFixed(1) ?? "Sin calificación"} ★</Text>
+                    <Text style={styles.chipAmberTexto}>{Number(d.calificacion).toFixed(1)} ★</Text>
                   </View>
                 )}
               </View>
@@ -388,7 +463,6 @@ function VistaStaff({ router }: { router: any }) {
     </>
   );
 }
-
 // ── Pantalla principal ────────────────────────────────────────────
 export default function Perfil() {
   const router = useRouter();
@@ -739,6 +813,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 32,
     paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
   },
   modalBtnTexto: { color: "#fff", fontWeight: "800", fontSize: 14 },
   btnEliminarDep: {
