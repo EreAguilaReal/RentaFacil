@@ -10,65 +10,52 @@ from usuarios.models import Usuario
 
 
 class DepartamentoViewSet(viewsets.ModelViewSet):
-
     queryset = Departamento.objects.all()
-
     serializer_class = DepartamentoSerializer
-
     permission_classes = [AllowAny]
-
-    parser_classes = [
-        MultiPartParser,
-        FormParser,
-        JSONParser
-    ]
-
+    parser_classes = [MultiPartParser,FormParser,JSONParser]
     def perform_create(self, serializer):
-
         arrendador_id = self.request.data.get("arrendador")
-
         try:
             arrendador = Usuario.objects.get(id=arrendador_id)
         except Usuario.DoesNotExist:
             arrendador = None
-
         serializer.save(arrendador=arrendador)
-
     def get_queryset(self):
+        qs = Departamento.objects.filter(activo=True)
 
-        qs = Departamento.objects.filter(
-            activo=True
-        )
+        arrendador_id = self.request.query_params.get('arrendador')
+        inquilino_id  = self.request.query_params.get('inquilino')
+        disponible    = self.request.query_params.get('disponible')
+        alcaldia      = self.request.query_params.get('alcaldia')
+        tipo          = self.request.query_params.get('tipo_renta')
 
-        disponible = self.request.query_params.get(
-            'disponible'
-        )
+        if arrendador_id:
+            qs = qs.filter(arrendador_id=arrendador_id)
 
-        alcaldia = self.request.query_params.get(
-            'alcaldia'
-        )
-
-        tipo = self.request.query_params.get(
-            'tipo_renta'
-        )
+        if inquilino_id:
+            qs = qs.filter(inquilino_id=inquilino_id)
 
         if disponible:
-            qs = qs.filter(
-                disponible=disponible.lower() == 'true'
-            )
+            qs = qs.filter(disponible=disponible.lower() == 'true')
 
         if alcaldia:
-            qs = qs.filter(
-                alcaldia__icontains=alcaldia
-            )
+            qs = qs.filter(alcaldia__icontains=alcaldia)
 
         if tipo:
-            qs = qs.filter(
-                tipo_renta=tipo
-            )
-
+            qs = qs.filter(tipo_renta=tipo)
         return qs
-    
+    def destroy(self, request, *args, **kwargs):
+        depa = self.get_object()
+        if not depa.disponible:
+            return Response(
+                {"error": "No puedes eliminar un departamento con renta activa."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        depa.activo = False   # borrado lógico
+        depa.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 @api_view(['GET'])
 def departamentos_por_usuario(request):
     """

@@ -10,6 +10,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -68,18 +69,74 @@ function Estrellas({ valor }: { valor: number | null | undefined }) {
 }
 
 // ── Vista Arrendador ──────────────────────────────────────────────
-function VistaArrendador({ depas, cargando, router }: {
-  depas: Departamento[]; cargando: boolean; router: any;
+function VistaArrendador({ depas, cargando, router, verificado, onEliminar }: {
+  depas: Departamento[]; cargando: boolean; router: any; verificado: boolean; onEliminar: (id: number) => void;
 }) {
+  const [modalVisible, setModalVisible] = useState(false);
+  const [confirmarId, setConfirmarId]   = useState<number | null>(null);
   const totalVistas = depas.reduce((s, d) => s + (d.vistas_mes ?? 0), 0);
   const promCalif   = depas.length
     ? depas.reduce((s, d) => s + (d.calificacion ?? 0), 0) / depas.length
     : 0;
-
   return (
     <>
       <View style={styles.seccionContainer}>
         <Text style={styles.seccionTitulo}>🏢 Mis departamentos</Text>
+        <Modal
+          visible={modalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalBox}>
+              <Text style={styles.modalEmoji}>🔒</Text>
+              <Text style={styles.modalTitulo}>Cuenta no verificada</Text>
+              <Text style={styles.modalTexto}>
+                Necesitas estar verificado para publicar un departamento.
+              </Text>
+              <TouchableOpacity
+                style={styles.modalBtn}
+                onPress={() => setModalVisible(false)}
+              >
+                <Text style={styles.modalBtnTexto}>Entendido</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+         <Modal
+          visible={confirmarId !== null}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setConfirmarId(null)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalBox}>
+              <Text style={styles.modalEmoji}>🗑️</Text>
+              <Text style={styles.modalTitulo}>Eliminar departamento</Text>
+              <Text style={styles.modalTexto}>
+                ¿Estás seguro de que deseas eliminar este departamento? Esta acción no se puede deshacer.
+              </Text>
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <TouchableOpacity
+                  style={[styles.modalBtn, { backgroundColor: "#e0dcd8", flex: 1 }]}
+                  onPress={() => setConfirmarId(null)}
+                >
+                  <Text style={[styles.modalBtnTexto, { color: "#333" }]}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalBtn, { backgroundColor: "#e63946", flex: 1 }]}
+                  onPress={() => {
+                    if (confirmarId !== null) onEliminar(confirmarId);
+                    setConfirmarId(null);
+                  }}
+                >
+                  <Text style={styles.modalBtnTexto}>Eliminar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
         {cargando ? (
           <ActivityIndicator color="#1a3a8f" />
         ) : depas.length === 0 ? (
@@ -115,12 +172,29 @@ function VistaArrendador({ depas, cargando, router }: {
                   👤 {d.inquilino_nombre}{d.rentado_hasta ? `  · Hasta: ${d.rentado_hasta}` : ""}
                 </Text>
               )}
+              {d.disponible && (
+                <TouchableOpacity
+                  style={styles.btnEliminarDep}
+                  onPress={(e) => {
+                    e.stopPropagation();          // evita navegar al depa
+                    setConfirmarId(d.id);
+                  }}
+                >
+                  <Text style={styles.btnEliminarDepTexto}>🗑 Eliminar</Text>
+                </TouchableOpacity>
+              )}
             </TouchableOpacity>
           ))
         )}
         <TouchableOpacity
           style={styles.btnAgregar}
-          onPress={() => router.push("/departamento/nuevo")}
+          onPress={() => {
+            if (!verificado) {
+              setModalVisible(true);  // ← muestra modal si no verificado
+            } else {
+              router.push("/departamento/nuevo");
+            }
+          }}
         >
           <Text style={styles.btnAgregarTexto}>＋ Agregar departamento</Text>
         </TouchableOpacity>
@@ -402,6 +476,18 @@ export default function Perfil() {
     } catch { alert("No se pudo eliminar el documento"); }
   };
 
+    const handleEliminarDepartamento = async (id: number) => {
+    try {
+      const r = await fetch(`${URL_BASE}/departamentos/${id}/`, {
+        method: "DELETE",
+      });
+      if (!r.ok) { alert("Error al eliminar el departamento"); return; }
+      setDepas(prev => prev.filter(d => d.id !== id));  // actualiza lista local
+    } catch {
+      alert("No se pudo eliminar el departamento");
+    }
+  };
+
   if (!usuario) return null;
 
   const esArrendador   = usuario.tipo_usuario === "arrendador";
@@ -532,7 +618,7 @@ export default function Perfil() {
         )}
 
         {/* Secciones por rol */}
-        {esArrendador   && <VistaArrendador   depas={depas} cargando={cargandoDepas} router={router} />}
+        {esArrendador   && <VistaArrendador   depas={depas} cargando={cargandoDepas} router={router} verificado={verificado} onEliminar={handleEliminarDepartamento} />}
         {esArrendatario && <VistaArrendatario depas={depas} cargando={cargandoDepas} router={router} />}
         {esStaff        && <VistaStaff        router={router} />}
 
@@ -615,4 +701,58 @@ const styles = StyleSheet.create({
   btnDocTexto: { fontSize: 14 },
   btnDocGreen: { backgroundColor: "#EAF3DE" },
   btnDocRed: { backgroundColor: "#fde8ea" },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 32,
+  },
+  modalBox: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 28,
+    alignItems: "center",
+    width: "100%",
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalEmoji: { fontSize: 40, marginBottom: 12 },
+  modalTitulo: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#1a1a1a",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  modalTexto: {
+    fontSize: 14,
+    color: "#555",
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  modalBtn: {
+    backgroundColor: "#1a3a8f",
+    borderRadius: 12,
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+  },
+  modalBtnTexto: { color: "#fff", fontWeight: "800", fontSize: 14 },
+  btnEliminarDep: {
+    marginTop: 10,
+    backgroundColor: "#fde8ea",
+    borderRadius: 10,
+    paddingVertical: 8,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#e63946",
+  },
+  btnEliminarDepTexto: {
+    color: "#e63946",
+    fontWeight: "800",
+    fontSize: 13,
+  },
 });
