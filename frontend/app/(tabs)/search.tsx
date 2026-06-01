@@ -16,6 +16,7 @@ import BusquedaBar from "../components/BusquedaBar";
 import ChipsFiltro from "../components/ChipsFiltro";
 import ModalFiltros from "../components/ModalFiltros";
 
+const CHIPS_TIPO_RENTA = ["solo_mujeres", "solo_hombres", "mixto"];
 // ── Tarjeta de departamento ───────────────────────────────────────
 const TarjetaDepa = ({ item }: { item: Departamento }) => {
 
@@ -170,8 +171,10 @@ export default function SearchScreen() {
       d.colonia.toLowerCase().includes(busqueda.toLowerCase());
 
     const matchChip = chipActivo
-      ? (d as Record<string, any>)[chipActivo] === true
-      : true;
+    ? CHIPS_TIPO_RENTA.includes(chipActivo)
+      ? d.tipo_renta === chipActivo                        // ← compara string
+      : (d as Record<string, any>)[chipActivo] === true   // ← compara booleano
+    : true;
 
     const matchPrecio = d.precio <= rangoMax;
 

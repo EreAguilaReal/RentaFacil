@@ -13,12 +13,14 @@ interface Chip {
 }
 
 const CHIPS_DEFAULT: Chip[] = [
-  { key: "amueblado",       label: "🛋 Amueblado" },
-  { key: "pet_friendly",    label: "🐾 Pet friendly" },
   { key: "solo_mujeres",    label: "👩 Solo mujeres" },
+  { key: "solo_hombres",    label: "👨 Solo hombres" }, 
+  { key: "mixto",           label: "👥 Mixto" },      
   { key: "internet",        label: "📶 Internet" },
   { key: "estacionamiento", label: "🚗 Estacionamiento" },
+  { key: "amueblado",       label: "🛋 Amueblado" },
   { key: "cocina",          label: "🍳 Cocina" },
+  { key: "pet_friendly",    label: "🐾 Pet friendly" },
 ];
 
 interface ChipsFiltroProps {
