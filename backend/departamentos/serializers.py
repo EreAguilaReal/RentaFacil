@@ -18,7 +18,8 @@ class ImagenDepartamentoSerializer(serializers.ModelSerializer):
 
 class DepartamentoSerializer(serializers.ModelSerializer):
     galeria          = ImagenDepartamentoSerializer(many=True, read_only=True)
-    imagen_principal = serializers.SerializerMethodField()
+    imagen_principal = serializers.ImageField(required=False, allow_null=True, use_url=True)
+
     class Meta:
         model = Departamento
         fields = [
@@ -56,12 +57,6 @@ class DepartamentoSerializer(serializers.ModelSerializer):
             'vistas_mes',
             'galeria',
         ]
-
-    def get_imagen_principal(self, obj):
-        request = self.context.get("request")
-        if obj.imagen_principal and request:
-            return request.build_absolute_uri(obj.imagen_principal.url)
-        return None
 
 class FavoritoSerializer(serializers.ModelSerializer):
     departamento    = DepartamentoSerializer(read_only=True)
