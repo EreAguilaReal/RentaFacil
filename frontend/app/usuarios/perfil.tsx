@@ -44,6 +44,16 @@ type Departamento = {
   inquilino_nombre?: string;
 };
 
+type Cita = {
+  id: number;
+  departamento: number;
+  departamento_titulo: string;
+  departamento_colonia: string;
+  dia: string;
+  horario: string;
+  estado: string;
+}
+
 // ── Subcomponentes ────────────────────────────────────────────────
 function FilaDato({ emoji, label, valor }: { emoji: string; label: string; valor: string }) {
   return (
@@ -70,18 +80,26 @@ function Estrellas({ valor }: { valor: number | null | undefined }) {
 
 // ── Vista Arrendador ──────────────────────────────────────────────
 function VistaArrendador({ depas, cargando, router, verificado, onEliminar }: {
-  depas: Departamento[]; cargando: boolean; router: any; verificado: boolean; onEliminar: (id: number) => void;
+  depas: Departamento[];
+  cargando: boolean;
+  router: any;
+  verificado: boolean;
+  onEliminar: (id: number) => void;
 }) {
   const [modalVisible, setModalVisible] = useState(false);
   const [confirmarId, setConfirmarId]   = useState<number | null>(null);
+
   const totalVistas = depas.reduce((s, d) => s + (d.vistas_mes ?? 0), 0);
   const promCalif   = depas.length
     ? depas.reduce((s, d) => s + (d.calificacion ?? 0), 0) / depas.length
     : 0;
+
   return (
     <>
       <View style={styles.seccionContainer}>
         <Text style={styles.seccionTitulo}>🏢 Mis departamentos</Text>
+
+        {/* Modal: cuenta no verificada */}
         <Modal
           visible={modalVisible}
           transparent
@@ -104,7 +122,9 @@ function VistaArrendador({ depas, cargando, router, verificado, onEliminar }: {
             </View>
           </View>
         </Modal>
-         <Modal
+
+        {/* Modal: confirmar eliminación */}
+        <Modal
           visible={confirmarId !== null}
           transparent
           animationType="fade"
@@ -137,6 +157,8 @@ function VistaArrendador({ depas, cargando, router, verificado, onEliminar }: {
             </View>
           </View>
         </Modal>
+
+        {/* Lista de departamentos */}
         {cargando ? (
           <ActivityIndicator color="#1a3a8f" />
         ) : depas.length === 0 ? (
@@ -150,6 +172,7 @@ function VistaArrendador({ depas, cargando, router, verificado, onEliminar }: {
             >
               <Text style={styles.depTitulo}>{d.titulo}</Text>
               <Text style={styles.depSub}>{d.colonia}</Text>
+
               <View style={styles.chipsRow}>
                 <View style={d.disponible ? styles.chipAmber : styles.chipGreen}>
                   <Text style={d.disponible ? styles.chipAmberTexto : styles.chipGreenTexto}>
@@ -161,36 +184,43 @@ function VistaArrendador({ depas, cargando, router, verificado, onEliminar }: {
                     <Text style={styles.chipBlueTexto}>{d.vistas_mes} vistas/mes</Text>
                   </View>
                 )}
-                {d.calificacion !== null && (
+                {d.calificacion != null && (
                   <View style={styles.chipAmber}>
-                    <Text style={styles.chipAmberTexto}>{Number(d.calificacion).toFixed(1) ?? "Sin calificación"} ★</Text>
+                    <Text style={styles.chipAmberTexto}>{Number(d.calificacion).toFixed(1)} ★</Text>
                   </View>
                 )}
               </View>
+
               {!d.disponible && d.inquilino_nombre && (
                 <Text style={styles.depMeta}>
                   👤 {d.inquilino_nombre}{d.rentado_hasta ? `  · Hasta: ${d.rentado_hasta}` : ""}
                 </Text>
               )}
-              {d.disponible && (
-                <TouchableOpacity
-                  style={styles.btnEliminarDep}
-                  onPress={(e) => {
-                    e.stopPropagation();          // evita navegar al depa
-                    setConfirmarId(d.id);
-                  }}
-                >
-                  <Text style={styles.btnEliminarDepTexto}>🗑 Eliminar</Text>
-                </TouchableOpacity>
-              )}
+
+              {/* Botones de acción — no propagan el onPress de la tarjeta */}
+              <View style={styles.accionesDepRow}>
+                {/* Eliminar — solo si no tiene renta activa */}
+                {d.disponible && (
+                  <TouchableOpacity
+                    style={[styles.btnAccion, styles.btnDanger]}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      setConfirmarId(d.id);
+                    }}
+                  >
+                    <Text style={styles.btnTextoBlanco}>🗑 Eliminar</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </TouchableOpacity>
           ))
         )}
+
         <TouchableOpacity
           style={styles.btnAgregar}
           onPress={() => {
             if (!verificado) {
-              setModalVisible(true);  // ← muestra modal si no verificado
+              setModalVisible(true);
             } else {
               router.push("/departamento/nuevo");
             }
@@ -198,6 +228,28 @@ function VistaArrendador({ depas, cargando, router, verificado, onEliminar }: {
         >
           <Text style={styles.btnAgregarTexto}>＋ Agregar departamento</Text>
         </TouchableOpacity>
+      </View>
+
+      {/* ── Citas por departamento ── */}
+      <View style={styles.seccionContainer}>
+        <Text style={styles.seccionTitulo}>📅 Citas</Text>
+        {depas.length === 0 ? (
+          <Text style={styles.vaciTexto}>No tienes departamentos con citas.</Text>
+        ) : (
+          depas.map((d) => (
+            <TouchableOpacity
+              key={d.id}
+              style={styles.depCard}
+              onPress={() => router.push(`/citas/departamento/${d.id}`)}
+            >
+              <Text style={styles.depTitulo}>{d.titulo}</Text>
+              <Text style={styles.depSub}>{d.colonia}</Text>
+              <Text style={{ fontSize: 12, color: "#1a3a8f", marginTop: 6, fontWeight: "700" }}>
+                Ver citas →
+              </Text>
+            </TouchableOpacity>
+          ))
+        )}
       </View>
 
       <View style={styles.seccionContainer}>
@@ -226,8 +278,8 @@ function VistaArrendador({ depas, cargando, router, verificado, onEliminar }: {
 }
 
 // ── Vista Arrendatario ────────────────────────────────────────────
-function VistaArrendatario({ depas, cargando, router }: {
-  depas: Departamento[]; cargando: boolean; router: any;
+function VistaArrendatario({ depas, cargando, router, citas, cargandoCitas }: {
+  depas: Departamento[]; cargando: boolean; router: any; citas: Cita[]; cargandoCitas: boolean;
 }) {
   return (
     <View style={styles.seccionContainer}>
@@ -268,6 +320,28 @@ function VistaArrendatario({ depas, cargando, router }: {
           </View>
         ))
       )}
+
+      <View style={styles.seccionContainer}>
+        <Text style={styles.seccionTitulo}>📅 Mis citas</Text>
+        {cargandoCitas ? (
+          <ActivityIndicator color="#1a3a8f" />
+        ) : citas.length === 0 ? (
+          <Text style={styles.vaciTexto}>No tienes citas agendadas.</Text>
+        ) : (
+          citas.map((cita) => (
+            <TouchableOpacity
+              key={cita.id}
+              style={styles.depCard}
+              onPress={() => router.push(`/citas/${cita.id}`)}
+            >
+              <Text style={styles.depTitulo}>{cita.departamento_titulo}</Text>
+              <Text style={styles.depSub}>{cita.departamento_colonia}</Text>
+              <Text style={styles.depMeta}>{cita.dia} · {cita.horario}</Text>
+              <Text style={styles.depMeta}>Estado: {cita.estado}</Text>
+            </TouchableOpacity>
+          ))
+        )}
+      </View>
     </View>
   );
 }
@@ -285,7 +359,6 @@ function VistaStaff({ router }: { router: any }) {
   const [depas, setDepas] = useState<Departamento[]>([]);
   const [cargando, setCargando] = useState(true);
 
-  // ── Estado del modal de confirmación ──
   const [modal, setModal] = useState<{
     visible: boolean;
     emoji: string;
@@ -295,17 +368,11 @@ function VistaStaff({ router }: { router: any }) {
     labelBtn: string;
     onConfirmar: () => void;
   }>({
-    visible: false,
-    emoji: "",
-    titulo: "",
-    texto: "",
-    colorBtn: "#1a3a8f",
-    labelBtn: "",
-    onConfirmar: () => {},
+    visible: false, emoji: "", titulo: "", texto: "",
+    colorBtn: "#1a3a8f", labelBtn: "", onConfirmar: () => {},
   });
 
   const cerrarModal = () => setModal(m => ({ ...m, visible: false }));
-
   const confirmar = (opciones: Omit<typeof modal, "visible">) =>
     setModal({ visible: true, ...opciones });
 
@@ -329,7 +396,6 @@ function VistaStaff({ router }: { router: any }) {
 
   return (
     <>
-      {/* ── Modal de confirmación reutilizable ── */}
       <Modal
         visible={modal.visible}
         transparent
@@ -359,7 +425,6 @@ function VistaStaff({ router }: { router: any }) {
         </View>
       </Modal>
 
-      {/* ── Documentos pendientes ── */}
       <View style={styles.seccionContainer}>
         <Text style={styles.seccionTitulo}>📄 Documentos pendientes</Text>
         {cargando ? (
@@ -377,15 +442,12 @@ function VistaStaff({ router }: { router: any }) {
                 <Text style={styles.docSub}>{TIPO_LABEL[doc.tipo_usuario] ?? doc.tipo_usuario}</Text>
               </View>
               <View style={styles.docBtns}>
-                {/* Ver — sin confirmación */}
                 <TouchableOpacity
                   style={styles.btnDoc}
                   onPress={() => Linking.openURL(`${MEDIA_BASE}${doc.url}`)}
                 >
                   <Text style={styles.btnDocTexto}>👁</Text>
                 </TouchableOpacity>
-
-                {/* Aprobar */}
                 <TouchableOpacity
                   style={[styles.btnDoc, styles.btnDocGreen]}
                   onPress={() => confirmar({
@@ -399,8 +461,6 @@ function VistaStaff({ router }: { router: any }) {
                 >
                   <Text style={styles.btnDocTexto}>✓</Text>
                 </TouchableOpacity>
-
-                {/* Rechazar */}
                 <TouchableOpacity
                   style={[styles.btnDoc, styles.btnDocRed]}
                   onPress={() => confirmar({
@@ -420,7 +480,6 @@ function VistaStaff({ router }: { router: any }) {
         )}
       </View>
 
-      {/* ── Rentas activas — sin cambios ── */}
       <View style={styles.seccionContainer}>
         <Text style={styles.seccionTitulo}>🏢 Rentas activas</Text>
         {cargando ? (
@@ -445,7 +504,7 @@ function VistaStaff({ router }: { router: any }) {
                     <Text style={styles.chipBlueTexto}>{d.vistas_mes} vistas/mes</Text>
                   </View>
                 )}
-                {d.calificacion !== null && (
+                {d.calificacion != null && (
                   <View style={styles.chipAmber}>
                     <Text style={styles.chipAmberTexto}>{Number(d.calificacion).toFixed(1)} ★</Text>
                   </View>
@@ -463,14 +522,16 @@ function VistaStaff({ router }: { router: any }) {
     </>
   );
 }
+
 // ── Pantalla principal ────────────────────────────────────────────
 export default function Perfil() {
   const router = useRouter();
   const { logout, usuario, actualizarUsuario } = useAuth();
-  const [depas, setDepas]             = useState<Departamento[]>([]);
+  const [depas, setDepas]                 = useState<Departamento[]>([]);
   const [cargandoDepas, setCargandoDepas] = useState(false);
+  const [citasArrendatario, setCitasArrendatario] = useState<Cita[]>([]);
+  const [cargandoCitas, setCargandoCitas]         = useState(false);
 
-  // Refresca datos del usuario cada vez que la pantalla recibe foco
   useFocusEffect(
     useCallback(() => {
       if (!usuario) return;
@@ -481,7 +542,6 @@ export default function Perfil() {
     }, [usuario?.id])
   );
 
-  // Carga departamentos según rol
   useEffect(() => {
     if (!usuario) return;
     const esArrendador   = usuario.tipo_usuario === "arrendador";
@@ -489,15 +549,31 @@ export default function Perfil() {
     if (!esArrendador && !esArrendatario) return;
 
     setCargandoDepas(true);
+    setDepas([]);
+
     const endpoint = esArrendador
       ? `${URL_BASE}/departamentos/?arrendador=${usuario.id}`
       : `${URL_BASE}/departamentos/?inquilino=${usuario.id}`;
 
     fetch(endpoint)
       .then(r => r.json())
-      .then(setDepas)
+      .then(data => setDepas(Array.isArray(data) ? data : data.results ?? []))
+      .catch(() => setDepas([]))
       .finally(() => setCargandoDepas(false));
-  }, [usuario?.id]); // solo se re-ejecuta si cambia el id
+  }, [usuario?.id, usuario?.tipo_usuario]);
+
+  useEffect(() => {
+    if (!usuario || usuario.tipo_usuario !== "arrendatario") return;
+
+    setCargandoCitas(true);
+    setCitasArrendatario([]);
+
+    fetch(`${URL_BASE}/citas/arrendatario/${usuario.id}/`)
+      .then(r => r.json())
+      .then(data => setCitasArrendatario(Array.isArray(data) ? data : []))
+      .catch(() => setCitasArrendatario([]))
+      .finally(() => setCargandoCitas(false));
+  }, [usuario?.id, usuario?.tipo_usuario]);
 
   const refrescarUsuario = async () => {
     if (!usuario) return;
@@ -550,13 +626,11 @@ export default function Perfil() {
     } catch { alert("No se pudo eliminar el documento"); }
   };
 
-    const handleEliminarDepartamento = async (id: number) => {
+  const handleEliminarDepartamento = async (id: number) => {
     try {
-      const r = await fetch(`${URL_BASE}/departamentos/${id}/`, {
-        method: "DELETE",
-      });
+      const r = await fetch(`${URL_BASE}/departamentos/${id}/`, { method: "DELETE" });
       if (!r.ok) { alert("Error al eliminar el departamento"); return; }
-      setDepas(prev => prev.filter(d => d.id !== id));  // actualiza lista local
+      setDepas(prev => prev.filter(d => d.id !== id));
     } catch {
       alert("No se pudo eliminar el departamento");
     }
@@ -568,11 +642,8 @@ export default function Perfil() {
   const esArrendatario = usuario.tipo_usuario === "arrendatario";
   const esStaff        = usuario.tipo_usuario === "admin";
 
-  // Leer campos con fallback seguro por si el backend aún no los devuelve
-  const verificado:         boolean               = (usuario as any).verificado          ?? false;
-  const estadoVerificacion: EstadoVerificacion    = (usuario as any).estado_verificacion ?? "";
-
-  const mostrarDoc = (esArrendador || esArrendatario) && !verificado;
+  const verificado:         boolean            = (usuario as any).verificado          ?? false;
+  const estadoVerificacion: EstadoVerificacion = (usuario as any).estado_verificacion ?? "";
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -630,12 +701,11 @@ export default function Perfil() {
           <FilaDato emoji="⚧"  label="Género"              valor={GENERO_LABEL[usuario.genero] ?? usuario.genero} />
         </View>
 
-        {/* Verificación — visible también cuando está aprobado para mostrar confirmación */}
+        {/* Verificación */}
         {(esArrendador || esArrendatario) && (
           <View style={styles.seccionContainer}>
             <Text style={styles.seccionTitulo}>Verificación</Text>
 
-            {/* ✅ Aprobado */}
             {verificado && (
               <View style={styles.docPendiente}>
                 <Text style={styles.docEmoji}>✅</Text>
@@ -645,7 +715,6 @@ export default function Perfil() {
               </View>
             )}
 
-            {/* ❌ Rechazado */}
             {!verificado && estadoVerificacion === "rechazado" && (
               <View style={styles.docPendiente}>
                 <Text style={styles.docEmoji}>❌</Text>
@@ -658,7 +727,6 @@ export default function Perfil() {
               </View>
             )}
 
-            {/* ⏳ Pendiente con documento subido */}
             {!verificado && estadoVerificacion === "pendiente" && usuario.documento_verificacion && (
               <View style={styles.docPendiente}>
                 <Text style={styles.docEmoji}>⏳</Text>
@@ -678,7 +746,6 @@ export default function Perfil() {
               </View>
             )}
 
-            {/* 📄 Sin documento */}
             {!verificado && !usuario.documento_verificacion && estadoVerificacion !== "rechazado" && (
               <View style={styles.docPendiente}>
                 <Text style={styles.docEmoji}>📄</Text>
@@ -692,9 +759,25 @@ export default function Perfil() {
         )}
 
         {/* Secciones por rol */}
-        {esArrendador   && <VistaArrendador   depas={depas} cargando={cargandoDepas} router={router} verificado={verificado} onEliminar={handleEliminarDepartamento} />}
-        {esArrendatario && <VistaArrendatario depas={depas} cargando={cargandoDepas} router={router} />}
-        {esStaff        && <VistaStaff        router={router} />}
+        {esArrendador   && (
+          <VistaArrendador
+            depas={depas}
+            cargando={cargandoDepas}
+            router={router}
+            verificado={verificado}
+            onEliminar={handleEliminarDepartamento}
+          />
+        )}
+        {esArrendatario && (
+          <VistaArrendatario
+            depas={depas}
+            cargando={cargandoDepas}
+            router={router}
+            citas={citasArrendatario}
+            cargandoCitas={cargandoCitas}
+          />
+        )}
+        {esStaff && <VistaStaff router={router} />}
 
         {/* Cerrar sesión */}
         <TouchableOpacity
@@ -709,126 +792,91 @@ export default function Perfil() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f7f4f0" },
-  topBar: { flexDirection: "row", justifyContent: "flex-end", alignItems: "center", paddingHorizontal: 16, paddingVertical: 10, backgroundColor: "#f7f4f0" },
-  topLogos: { flexDirection: "row", gap: 6, alignItems: "center" },
-  logoBadge: { backgroundColor: "#8B0000", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
-  logoTexto: { color: "#fff", fontWeight: "800", fontSize: 12, letterSpacing: 0.5 },
-  separador: { height: 1, backgroundColor: "#e0dcd8" },
-  accionesBar: { flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 10 },
-  accionBtn: { width: 38, height: 38, borderRadius: 10, backgroundColor: "#fff", justifyContent: "center", alignItems: "center", shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 4, elevation: 2, borderWidth: 1, borderColor: "#e0dcd8" },
-  accionEmoji: { fontSize: 17 },
-  accionBtnEditar: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#fff", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 4, elevation: 2, borderWidth: 1, borderColor: "#e0dcd8" },
-  accionEditarTexto: { fontSize: 13, fontWeight: "700", color: "#1a3a8f" },
+export const styles = StyleSheet.create({
+  container:  { flex: 1, backgroundColor: "#f7f4f0" },
+  topBar:     { flexDirection: "row", justifyContent: "flex-end", alignItems: "center", paddingHorizontal: 16, paddingVertical: 10, backgroundColor: "#f7f4f0" },
+  topLogos:   { flexDirection: "row", gap: 6, alignItems: "center" },
+  logoBadge:  { backgroundColor: "#8B0000", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+  logoTexto:  { color: "#fff", fontWeight: "800", fontSize: 12, letterSpacing: 0.5 },
+  separador:  { height: 1, backgroundColor: "#e0dcd8" },
+
+  accionesBar:      { flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 10 },
+  accionBtn:        { width: 38, height: 38, borderRadius: 10, backgroundColor: "#fff", justifyContent: "center", alignItems: "center", shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 4, elevation: 2, borderWidth: 1, borderColor: "#e0dcd8" },
+  accionEmoji:      { fontSize: 17 },
+  accionBtnEditar:  { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#fff", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 4, elevation: 2, borderWidth: 1, borderColor: "#e0dcd8" },
+  accionEditarTexto:{ fontSize: 13, fontWeight: "700", color: "#1a3a8f" },
+
   avatarContainer: { alignItems: "center", paddingVertical: 24, paddingHorizontal: 20 },
-  avatarCirculo: { width: 90, height: 90, borderRadius: 45, backgroundColor: "#1a3a8f", justifyContent: "center", alignItems: "center", marginBottom: 12, shadowColor: "#1a3a8f", shadowOpacity: 0.3, shadowRadius: 10, elevation: 6 },
-  avatarLetra: { fontSize: 40, fontWeight: "900", color: "#fff" },
-  nombreCompleto: { fontSize: 22, fontWeight: "900", color: "#1a1a1a" },
-  nombreUsuario: { fontSize: 14, color: "#888", fontWeight: "600", marginTop: 2 },
-  tipoBadge: { backgroundColor: "#fde8ea", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 6, marginTop: 10 },
-  tipoTexto: { fontSize: 13, fontWeight: "700", color: "#e63946" },
+  avatarCirculo:   { width: 90, height: 90, borderRadius: 45, backgroundColor: "#1a3a8f", justifyContent: "center", alignItems: "center", marginBottom: 12, shadowColor: "#1a3a8f", shadowOpacity: 0.3, shadowRadius: 10, elevation: 6 },
+  avatarLetra:     { fontSize: 40, fontWeight: "900", color: "#fff" },
+  nombreCompleto:  { fontSize: 22, fontWeight: "900", color: "#1a1a1a" },
+  nombreUsuario:   { fontSize: 14, color: "#888", fontWeight: "600", marginTop: 2 },
+  tipoBadge:       { backgroundColor: "#fde8ea", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 6, marginTop: 10 },
+  tipoTexto:       { fontSize: 13, fontWeight: "700", color: "#e63946" },
+
   seccionContainer: { marginHorizontal: 16, marginBottom: 16, backgroundColor: "#fff", borderRadius: 18, padding: 16, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 8, elevation: 2 },
-  seccionTitulo: { fontSize: 16, fontWeight: "800", color: "#1a1a1a", marginBottom: 12 },
-  filaRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#f0ece8" },
-  filaEmoji: { fontSize: 20, width: 28 },
+  seccionTitulo:    { fontSize: 16, fontWeight: "800", color: "#1a1a1a", marginBottom: 12 },
+
+  filaRow:    { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#f0ece8" },
+  filaEmoji:  { fontSize: 20, width: 28 },
   filaTextos: { flex: 1 },
-  filaLabel: { fontSize: 12, color: "#aaa", fontWeight: "600" },
-  filaValor: { fontSize: 15, color: "#333", fontWeight: "600", marginTop: 2 },
+  filaLabel:  { fontSize: 12, color: "#aaa", fontWeight: "600" },
+  filaValor:  { fontSize: 15, color: "#333", fontWeight: "600", marginTop: 2 },
+
   docPendiente: { alignItems: "center", gap: 8, paddingVertical: 8 },
-  docEmoji: { fontSize: 28 },
-  docTexto: { fontSize: 14, color: "#555", fontWeight: "600" },
-  docBtn: { backgroundColor: "#1a3a8f", borderRadius: 12, paddingHorizontal: 20, paddingVertical: 10, marginTop: 4 },
-  docBtnTexto: { color: "#fff", fontWeight: "800", fontSize: 13 },
-  cerrarSesionBtn: { backgroundColor: "#e63946", borderRadius: 14, paddingVertical: 16, alignItems: "center", marginHorizontal: 16, marginBottom: 40, marginTop: 8 },
+  docEmoji:     { fontSize: 28 },
+  docTexto:     { fontSize: 14, color: "#555", fontWeight: "600" },
+  docBtn:       { backgroundColor: "#1a3a8f", borderRadius: 12, paddingHorizontal: 20, paddingVertical: 10, marginTop: 4 },
+  docBtnTexto:  { color: "#fff", fontWeight: "800", fontSize: 13 },
+
+  cerrarSesionBtn:   { backgroundColor: "#e63946", borderRadius: 14, paddingVertical: 16, alignItems: "center", marginHorizontal: 16, marginBottom: 40, marginTop: 8 },
   cerrarSesionTexto: { color: "#fff", fontWeight: "900", fontSize: 15 },
+
   vaciTexto: { fontSize: 14, color: "#aaa", textAlign: "center", paddingVertical: 12 },
-  depCard: { borderWidth: 1, borderColor: "#e0dcd8", borderRadius: 12, padding: 12, marginBottom: 8 },
-  depTitulo: { fontSize: 15, fontWeight: "800", color: "#1a1a1a" },
-  depSub: { fontSize: 12, color: "#888", marginTop: 2 },
-  depMeta: { fontSize: 12, color: "#555", marginTop: 6 },
-  chipsRow: { flexDirection: "row", gap: 6, marginTop: 8, flexWrap: "wrap" },
-  chipGreen: { backgroundColor: "#EAF3DE", borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
+
+  depCard:  { borderWidth: 1, borderColor: "#e0dcd8", borderRadius: 12, padding: 12, marginBottom: 8 },
+  depTitulo:{ fontSize: 15, fontWeight: "800", color: "#1a1a1a" },
+  depSub:   { fontSize: 12, color: "#888", marginTop: 2 },
+  depMeta:  { fontSize: 12, color: "#555", marginTop: 6 },
+
+  chipsRow:       { flexDirection: "row", gap: 6, marginTop: 8, flexWrap: "wrap" },
+  chipGreen:      { backgroundColor: "#EAF3DE", borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
   chipGreenTexto: { fontSize: 11, fontWeight: "700", color: "#27500A" },
-  chipAmber: { backgroundColor: "#FAEEDA", borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
+  chipAmber:      { backgroundColor: "#FAEEDA", borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
   chipAmberTexto: { fontSize: 11, fontWeight: "700", color: "#633806" },
-  chipBlue: { backgroundColor: "#E6F1FB", borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
-  chipBlueTexto: { fontSize: 11, fontWeight: "700", color: "#0C447C" },
-  btnAgregar: { backgroundColor: "#1a3a8f", borderRadius: 12, paddingVertical: 12, alignItems: "center", marginTop: 8 },
+  chipBlue:       { backgroundColor: "#E6F1FB", borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
+  chipBlueTexto:  { fontSize: 11, fontWeight: "700", color: "#0C447C" },
+
+  btnAgregar:      { backgroundColor: "#1a3a8f", borderRadius: 12, paddingVertical: 12, alignItems: "center", marginTop: 8 },
   btnAgregarTexto: { color: "#fff", fontWeight: "800", fontSize: 14 },
+
   statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  statCard: { flex: 1, minWidth: "45%", backgroundColor: "#f0f4ff", borderRadius: 12, padding: 12, alignItems: "center" },
-  statNum: { fontSize: 22, fontWeight: "900", color: "#1a3a8f" },
+  statCard:  { flex: 1, minWidth: "45%", backgroundColor: "#f0f4ff", borderRadius: 12, padding: 12, alignItems: "center" },
+  statNum:   { fontSize: 22, fontWeight: "900", color: "#1a3a8f" },
   statLabel: { fontSize: 11, color: "#555", marginTop: 4, textAlign: "center" },
+
   accionesDepRow: { flexDirection: "row", gap: 6, marginTop: 10, flexWrap: "wrap" },
-  btnAccion: { flex: 1, borderRadius: 10, paddingVertical: 8, alignItems: "center", borderWidth: 1, borderColor: "#e0dcd8", minWidth: 80 },
-  btnPrimary: { backgroundColor: "#1a3a8f", borderColor: "#1a3a8f" },
-  btnDanger: { backgroundColor: "#e63946", borderColor: "#e63946" },
+  btnAccion:      { flex: 1, borderRadius: 10, paddingVertical: 8, alignItems: "center", borderWidth: 1, borderColor: "#e0dcd8", minWidth: 80 },
+  btnPrimary:     { backgroundColor: "#1a3a8f", borderColor: "#1a3a8f" },
+  btnDanger:      { backgroundColor: "#e63946", borderColor: "#e63946" },
   btnTextoBlanco: { color: "#fff", fontWeight: "700", fontSize: 12 },
   btnTextoOscuro: { color: "#1a1a1a", fontWeight: "700", fontSize: 12 },
-  docRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#f0ece8" },
+
+  docRow:   { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#f0ece8" },
   docIcono: { width: 36, height: 36, backgroundColor: "#E6F1FB", borderRadius: 8, justifyContent: "center", alignItems: "center" },
-  docNombre: { fontSize: 13, fontWeight: "700", color: "#1a1a1a" },
-  docSub: { fontSize: 11, color: "#888", marginTop: 2 },
-  docBtns: { flexDirection: "row", gap: 4 },
-  btnDoc: { width: 32, height: 32, borderRadius: 8, backgroundColor: "#f0ece8", justifyContent: "center", alignItems: "center" },
+  docNombre:{ fontSize: 13, fontWeight: "700", color: "#1a1a1a" },
+  docSub:   { fontSize: 11, color: "#888", marginTop: 2 },
+  docBtns:  { flexDirection: "row", gap: 4 },
+  btnDoc:      { width: 32, height: 32, borderRadius: 8, backgroundColor: "#f0ece8", justifyContent: "center", alignItems: "center" },
   btnDocTexto: { fontSize: 14 },
   btnDocGreen: { backgroundColor: "#EAF3DE" },
-  btnDocRed: { backgroundColor: "#fde8ea" },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 32,
-  },
-  modalBox: {
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 28,
-    alignItems: "center",
-    width: "100%",
-    shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  modalEmoji: { fontSize: 40, marginBottom: 12 },
-  modalTitulo: {
-    fontSize: 18,
-    fontWeight: "900",
-    color: "#1a1a1a",
-    marginBottom: 8,
-    textAlign: "center",
-  },
-  modalTexto: {
-    fontSize: 14,
-    color: "#555",
-    textAlign: "center",
-    lineHeight: 20,
-    marginBottom: 20,
-  },
-  modalBtn: {
-    backgroundColor: "#1a3a8f",
-    borderRadius: 12,
-    paddingHorizontal: 32,
-    paddingVertical: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  modalBtnTexto: { color: "#fff", fontWeight: "800", fontSize: 14 },
-  btnEliminarDep: {
-    marginTop: 10,
-    backgroundColor: "#fde8ea",
-    borderRadius: 10,
-    paddingVertical: 8,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#e63946",
-  },
-  btnEliminarDepTexto: {
-    color: "#e63946",
-    fontWeight: "800",
-    fontSize: 13,
-  },
+  btnDocRed:   { backgroundColor: "#fde8ea" },
+
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", alignItems: "center", paddingHorizontal: 32 },
+  modalBox:     { backgroundColor: "#fff", borderRadius: 20, padding: 28, alignItems: "center", width: "100%", shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 20, elevation: 10 },
+  modalEmoji:   { fontSize: 40, marginBottom: 12 },
+  modalTitulo:  { fontSize: 18, fontWeight: "900", color: "#1a1a1a", marginBottom: 8, textAlign: "center" },
+  modalTexto:   { fontSize: 14, color: "#555", textAlign: "center", lineHeight: 20, marginBottom: 20 },
+  modalBtn:     { backgroundColor: "#1a3a8f", borderRadius: 12, paddingHorizontal: 32, paddingVertical: 12, alignItems: "center", justifyContent: "center" },
+  modalBtnTexto:{ color: "#fff", fontWeight: "800", fontSize: 14 },
 });

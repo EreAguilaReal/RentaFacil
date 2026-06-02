@@ -56,3 +56,7 @@ export function useFiltros(): FiltrosState {
   if (!ctx) throw new Error("useFiltros debe usarse dentro de <FiltrosProvider>");
   return ctx;
 }
+
+export default function FiltrosContextRoute() {
+  return null;
+}

@@ -17,8 +17,8 @@ import {
   Departamento,
   obtenerIdsFavoritos,
   toggleFavorito,
-} from "../../services/api";
-import { useAuth } from "../context/AuthContext";
+} from "./../../services/api";
+import { useAuth } from "./../context/AuthContext";
 
 const { width } = Dimensions.get("window");
 

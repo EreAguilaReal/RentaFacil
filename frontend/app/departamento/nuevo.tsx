@@ -15,8 +15,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
-import { useAuth } from "../context/AuthContext";
-import { URL_BASE } from "../../services/api";
+import { useAuth } from "./../context/AuthContext";
+import { URL_BASE } from "./../../services/api";
 
 // ── Helper: convierte URI local a Blob (web) ──────────────────────
 async function uriABlob(uri: string): Promise<Blob> {

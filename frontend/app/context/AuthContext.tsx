@@ -105,3 +105,7 @@ export function AuthProvider({
 }
 
 export const useAuth = () => useContext(AuthContext);
+
+export default function AuthContextRoute() {
+  return null;
+}

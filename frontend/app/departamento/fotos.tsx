@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect } from "react";
-import { URL_BASE } from "../../services/api";
+import { URL_BASE } from "./../../services/api";
 
 const { height } = Dimensions.get("window");
 

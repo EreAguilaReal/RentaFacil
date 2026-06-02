@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import {
   Modal,
+  Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -8,14 +9,14 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
+import { useAuth } from "./../context/AuthContext";
+import { URL_BASE } from "./../../services/api";
 
 // ── Opciones de día y horario ─────────────────────────────────────
-const DIAS = [
-  "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo",
-];
-
 const HORARIOS = [
   "9:00 - 10:00", "10:00 - 11:00", "11:00 - 12:00",
   "12:00 - 13:00", "13:00 - 14:00", "15:00 - 16:00",
@@ -100,27 +101,56 @@ const dropStyles = StyleSheet.create({
 
 // ── Pantalla principal ────────────────────────────────────────────
 export default function AgendarScreen() {
+  const { id } = useLocalSearchParams();           // id del departamento
+  const { usuario } = useAuth();
+  const [enviando, setEnviando] = useState(false);
   const router = useRouter();
 
   const [iconActivo, setIconActivo]   = useState<string | null>(null);
-  const [diaSeleccionado, setDia]     = useState<string | null>(null);
+  const [fechaSeleccionada, setFechaSeleccionada] = useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [horarioSeleccionado, setHorario] = useState<string | null>(null);
   const [modalExito, setModalExito]   = useState(false);
   const [modalError, setModalError]   = useState(false);
   const [errores, setErrores]         = useState<string[]>([]);
 
-  const handleSiguiente = () => {
+  const handleSiguiente = async () => {
     const nuevosErrores: string[] = [];
-    if (!diaSeleccionado)     nuevosErrores.push("Fecha no disponible");
-    if (!horarioSeleccionado) nuevosErrores.push("Horario no disponible");
-
+    if (!fechaSeleccionada)     nuevosErrores.push("Selecciona una fecha");
+    if (!horarioSeleccionado) nuevosErrores.push("Selecciona un horario");
     if (nuevosErrores.length > 0) {
       setErrores(nuevosErrores);
       setModalError(true);
-    } else {
+      return;
+    }
+
+    if (!usuario || !id) return;
+    setEnviando(true);
+    try {
+      const r = await fetch(`${URL_BASE}/citas/agendar/`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          departamento: Number(id),
+          arrendatario: usuario.id,
+          dia:     fechaSeleccionada ? fechaSeleccionada.toISOString().split("T")[0] : "",
+          horario: horarioSeleccionado,
+        }),
+      });
+      if (!r.ok) throw new Error();
       setModalExito(true);
+    } catch {
+      setErrores(["Error al conectar con el servidor"]);
+      setModalError(true);
+    } finally {
+      setEnviando(false);
     }
   };
+
+  // botón Siguiente:
+  // <TouchableOpacity ... onPress={handleSiguiente} disabled={enviando}>
+  //   <Text>{enviando ? "Agendando..." : "Siguiente"}</Text>
+  // </TouchableOpacity>
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -176,12 +206,60 @@ export default function AgendarScreen() {
 
         {/* ── Dropdowns ── */}
         <View style={styles.formContainer}>
-          <Dropdown
-            placeholder="Dia"
-            opciones={DIAS}
-            seleccionado={diaSeleccionado}
-            onSeleccionar={setDia}
-          />
+          {Platform.OS === "web" ? (
+            <input
+              type="date"
+              value={fechaSeleccionada ? fechaSeleccionada.toISOString().split("T")[0] : ""}
+              min={new Date().toISOString().split("T")[0]}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (!value) {
+                  setFechaSeleccionada(null);
+                  return;
+                }
+                setFechaSeleccionada(new Date(value));
+              }}
+              style={{
+                backgroundColor: "#f7f4f0",
+                borderRadius: 12,
+                border: "1.5px solid #e0dcd8",
+                paddingInline: 14,
+                paddingBlock: 12,
+                fontSize: 15,
+                color: "#1a1a1a",
+                width: "100%",
+                boxSizing: "border-box",
+                fontFamily: "inherit",
+                marginBottom: 14,
+              }}
+            />
+          ) : (
+            <>
+              <TouchableOpacity
+                style={styles.dateSelector}
+                onPress={() => setShowDatePicker(true)}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.dateSelectorText, !fechaSeleccionada && styles.placeholder]}>
+                  {fechaSeleccionada
+                    ? fechaSeleccionada.toLocaleDateString("es-MX", { year: "numeric", month: "long", day: "numeric" })
+                    : "Selecciona una fecha"}
+                </Text>
+              </TouchableOpacity>
+              {showDatePicker && (
+                <DateTimePicker
+                  value={fechaSeleccionada ?? new Date()}
+                  mode="date"
+                  display="default"
+                  minimumDate={new Date()}
+                  onChange={(event, selectedDate) => {
+                    setShowDatePicker(Platform.OS === "ios");
+                    if (selectedDate) setFechaSeleccionada(selectedDate);
+                  }}
+                />
+              )}
+            </>
+          )}
           <Dropdown
             placeholder="Horario"
             opciones={HORARIOS}
@@ -293,6 +371,23 @@ const styles = StyleSheet.create({
     marginHorizontal: 20, backgroundColor: "#1a3a8f",
     borderRadius: 30, paddingVertical: 16, alignItems: "center",
     shadowColor: "#1a3a8f", shadowOpacity: 0.35, shadowRadius: 10, elevation: 5,
+  },
+  dateSelector: {
+    borderWidth: 1.5,
+    borderColor: "#1a3a8f",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    backgroundColor: "#fff",
+    marginBottom: 14,
+    alignItems: "center",
+  },
+  dateSelectorText: {
+    fontSize: 15,
+    color: "#1a1a1a",
+  },
+  placeholder: {
+    color: "#aaa",
   },
   btnSiguienteTexto: { color: "#fff", fontWeight: "900", fontSize: 17 },
 
