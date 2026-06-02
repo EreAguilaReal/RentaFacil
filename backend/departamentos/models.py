@@ -32,13 +32,10 @@ class Departamento(models.Model):
     estacionamiento = models.BooleanField(default=False)
     cocina = models.BooleanField(default=False)
 
-    metro_cercano = models.CharField(
-        max_length=100,
-        blank=True
-    )
+    metro_cercano = models.CharField(max_length=100, blank=True)
 
-    imagen = models.ImageField(
-        upload_to='departamentos/',
+    imagen_principal = models.ImageField(
+        upload_to='departamentos/principal/',
         null=True,
         blank=True
     )
@@ -61,10 +58,7 @@ class Departamento(models.Model):
 
     disponible = models.BooleanField(default=True)
 
-    rentado_hasta = models.DateField(
-        null=True,
-        blank=True
-    )
+    rentado_hasta = models.DateField(null=True, blank=True)
 
     vistas_mes = models.PositiveIntegerField(default=0)
 
@@ -77,13 +71,8 @@ class Departamento(models.Model):
 
     activo = models.BooleanField(default=True)
 
-    fecha_creacion = models.DateTimeField(
-        auto_now_add=True
-    )
-
-    fecha_actualizacion = models.DateTimeField(
-        auto_now=True
-    )
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'departamentos'
@@ -93,9 +82,33 @@ class Departamento(models.Model):
 
     def __str__(self):
         return f'{self.titulo} - ${self.precio}/mes'
-    
+
+    def total_imagenes(self):
+        """Cuenta imagen principal + galería."""
+        return (1 if self.imagen_principal else 0) + self.galeria.count()
+
+
+class ImagenDepartamento(models.Model):
+    departamento = models.ForeignKey(
+        Departamento,
+        on_delete=models.CASCADE,
+        related_name='galeria'
+    )
+    imagen = models.ImageField(upload_to='departamentos/galeria/')
+    orden  = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        db_table = 'departamentos_imagenes'
+        ordering = ['orden']
+        verbose_name = 'Imagen de departamento'
+        verbose_name_plural = 'Imágenes de departamento'
+
+    def __str__(self):
+        return f'Imagen {self.orden} — {self.departamento.titulo}'
+
+
 class Favorito(models.Model):
-    usuario      = models.ForeignKey(
+    usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="favoritos"
@@ -105,7 +118,7 @@ class Favorito(models.Model):
         on_delete=models.CASCADE,
         related_name="favoritos"
     )
-    fecha        = models.DateTimeField(auto_now_add=True)
+    fecha = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = ("usuario", "departamento")

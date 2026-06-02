@@ -74,7 +74,7 @@ const TarjetaDepa = ({ item }: { item: Departamento }) => {
       onPress={() => router.push(`/departamento/${item.id}`)}
     >
       <Image
-        source={{ uri: item.imagen }}
+        source={{ uri: item.imagen_principal }}
         style={styles.tarjetaImagen}
       />
 

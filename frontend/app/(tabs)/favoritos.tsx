@@ -19,7 +19,7 @@ type DepaFav = {
   titulo:    string;
   colonia:   string;
   precio:    number;
-  imagen?:   string;
+  imagen_principal?:   string;
   metro_cercano?: string;
   tipo_renta?: string;
   pet_friendly?: boolean;
@@ -73,7 +73,7 @@ const TarjetaFav = ({
     >
       <View style={styles.imagenWrapper}>
         <Image
-          source={{ uri: d.imagen ?? "https://via.placeholder.com/400x200" }}
+          source={{ uri: d.imagen_principal || "https://i.pinimg.com/736x/55/8a/0a/558a0a0d4e47009207b6360e5775a8bc.jpg", }}
           style={styles.imagen}
         />
         {/* Badges */}

@@ -13,33 +13,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect } from "react";
+import { URL_BASE } from "../../services/api";
 
 const { height } = Dimensions.get("window");
-
-// ── Fotos mock ────────────────────────────────────────────────────
-const FOTOS_MOCK = [
-  { id: 1, uri: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800&q=80", label: "Sala" },
-  { id: 2, uri: "https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=800&q=80", label: "Recámara principal" },
-  { id: 3, uri: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80", label: "Cocina" },
-  { id: 4, uri: "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=800&q=80", label: "Baño" },
-  { id: 5, uri: "https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=800&q=80", label: "Comedor" },
-  { id: 6, uri: "https://images.unsplash.com/photo-1484154218962-a197022b5858?w=800&q=80", label: "Recámara 2" },
-];
-
-// ── Amenidades mock ───────────────────────────────────────────────
-const AMENIDADES = [
-  { label: "Recámaras",                  valor: "2",  emoji: "🛏" },
-  { label: "Baños",                      valor: "2",  emoji: "🚿" },
-  { label: "Sala",                       valor: null, emoji: "🛋" },
-  { label: "Comedor",                    valor: null, emoji: "🍽" },
-  { label: "Cocina",                     valor: null, emoji: "🍳" },
-  { label: "Cuarto de servicios",        valor: null, emoji: "🧹" },
-  { label: "Cámaras de seguridad ext.", valor: null, emoji: "📷" },
-  { label: "Electrodomésticos",          valor: null, emoji: "🫙" },
-  { label: "Muebles",                    valor: null, emoji: "🛋" },
-  { label: "Internet",                   valor: null, emoji: "📶" },
-  { label: "Estacionamiento",            valor: null, emoji: "🅿️" },
-];
 
 // ── Íconos top bar ────────────────────────────────────────────────
 const TOP_ICONS = [
@@ -51,10 +28,50 @@ const TOP_ICONS = [
 export default function FotosScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
+  const [departamento, setDepartamento] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   const [iconActivo, setIconActivo]       = useState<string | null>(null);
   const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
+  const imagenes =
+  departamento
+    ? [
+        ...(departamento.imagen_principal
+          ? [
+              {
+                id: "principal",
+                imagen: departamento.imagen_principal,
+              },
+            ]
+          : []),
+        ...(departamento.galeria || []),
+      ]
+    : [];
+  useEffect(() => {
+    const cargarDepartamento = async () => {
+      try {
+        const response = await fetch(`${URL_BASE}/departamentos/${id}/`);
 
+        if (!response.ok) {
+          throw new Error("Error al cargar departamento");
+        }
+
+        const data = await response.json();
+
+        console.log("Departamento:", data);
+
+        setDepartamento(data);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (id) {
+      cargarDepartamento();
+    }
+  }, [id]);
   // ── Animación bottom sheet ────────────────────────────────────
   const translateY = useRef(new Animated.Value(height)).current;
 
@@ -97,7 +114,51 @@ export default function FotosScreen() {
       },
     })
   ).current;
-
+    if (loading) {
+    return (
+      <SafeAreaView
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <Text>Cargando...</Text>
+      </SafeAreaView>
+    );
+  }
+  const amenidades = departamento
+  ? [
+      {
+        label: "Recámaras",
+        valor: String(departamento.cuartos),
+      },
+      {
+        label: "Internet",
+        valor: departamento.internet ? "✓" : "✗",
+      },
+      {
+        label: "Amueblado",
+        valor: departamento.amueblado ? "✓" : "✗",
+      },
+      {
+        label: "Estacionamiento",
+        valor: departamento.estacionamiento ? "✓" : "✗",
+      },
+      {
+        label: "Pet Friendly",
+        valor: departamento.pet_friendly ? "✓" : "✗",
+      },
+      {
+        label: "Cocina",
+        valor: departamento.cocina ? "✓" : "✗",
+      },
+      {
+        label: "Tipo de renta",
+        valor: departamento.tipo_renta,
+      },
+    ]
+  : [];
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <StatusBar barStyle="dark-content" backgroundColor="#f7f4f0" />
@@ -150,11 +211,23 @@ export default function FotosScreen() {
       >
         <Text style={styles.titulo}>Fotos del{"\n"}departamento</Text>
 
-        {FOTOS_MOCK.map((foto) => (
-          <View key={foto.id} style={styles.fotoContainer}>
-            <Image source={{ uri: foto.uri }} style={styles.foto} />
+        {imagenes.map((foto: any, index: number) => (
+          <View
+            key={foto.id ?? index}
+            style={styles.fotoContainer}
+          >
+            <Image
+              source={{
+                uri: foto.imagen,
+              }}
+              style={styles.foto}
+              resizeMode="cover"
+            />
+
             <View style={styles.fotoLabelContainer}>
-              <Text style={styles.fotoLabel}>{foto.label}</Text>
+              <Text style={styles.fotoLabel}>
+                {index === 0 ? "Imagen principal" : `Foto ${index}`}
+              </Text>
             </View>
           </View>
         ))}
@@ -186,15 +259,16 @@ export default function FotosScreen() {
         <ScrollView showsVerticalScrollIndicator={false}>
           <Text style={styles.sheetTitulo}>Este departamento ofrece</Text>
 
-          {AMENIDADES.map((a, i) => (
+          {amenidades.map((a, i) => (
             <View key={i} style={styles.amenidadRow}>
-              {a.valor ? (
-                <Text style={styles.amenidadValor}>{a.valor}</Text>
-              ) : (
-                <Text style={styles.amenidadEmoji}>{a.emoji}</Text>
-              )}
-              <Text style={styles.amenidadLabel}>{a.label}</Text>
-            </View>
+            <Text style={styles.amenidadValor}>
+              {a.valor}
+            </Text>
+
+            <Text style={styles.amenidadLabel}>
+              {a.label}
+            </Text>
+          </View>
           ))}
 
           <TouchableOpacity style={styles.sheetCerrarBtn} onPress={cerrarSheet}>
@@ -302,7 +376,7 @@ const styles = StyleSheet.create({
   },
   amenidadValor: {
     fontSize: 16, fontWeight: "900", color: "#fff",
-    width: 28, textAlign: "center",
+    width: 120, textAlign: "center",
   },
   amenidadEmoji: { fontSize: 22, width: 28, textAlign: "center" },
   amenidadLabel: { fontSize: 15, color: "#fff", fontWeight: "500", flex: 1 },

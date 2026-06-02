@@ -4,6 +4,7 @@ export const URL_BASE = Platform.OS === 'web'
   ? 'http://localhost:8000/api'
   : 'http://IP-LOCAL:8000/api';
   
+
 export async function obtenerDepartamentos(filtros: Record<string, string> = {}) {
   const params = new URLSearchParams(filtros).toString();
   const res = await fetch(`${URL_BASE}/departamentos/?${params}`);
@@ -26,11 +27,11 @@ export type Departamento = {
   alcaldia: string;
   direccion: string;
   metro_cercano: string;
-  imagen?: string;
+  imagen_principal?: string;
+  galeria?: { id: number; imagen: string; orden: number }[];
   disponible: boolean;
   tipo_renta?: 'solo_mujeres' | 'solo_hombres' | 'mixto';
   cuartos: number;
-  // amenidades
   amueblado?: boolean;
   internet?: boolean;
   estacionamiento?: boolean;

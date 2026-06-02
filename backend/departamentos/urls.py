@@ -8,6 +8,16 @@ router.register(r'departamentos', DepartamentoViewSet, basename='departamento')
 
 urlpatterns = [
     path('', include(router.urls)),
+    path(
+        'departamentos/<int:pk>/galeria/',
+        DepartamentoViewSet.as_view({'post': 'subir_imagen_galeria'}),
+        name='departamento-galeria-subir'
+    ),
+    path(
+        'departamentos/<int:pk>/galeria/<int:img_id>/',
+        DepartamentoViewSet.as_view({'delete': 'eliminar_imagen_galeria'}),
+        name='departamento-galeria-eliminar'
+    ),
 ]
 
 urlpatterns += [

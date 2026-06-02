@@ -104,7 +104,7 @@ const TarjetaDepa = ({ item }: { item: Departamento }) => {
       activeOpacity={0.85}
       onPress={() => router.push(`/departamento/${item.id}`)}
     >
-      <Image source={{ uri: item.imagen }} style={styles.tarjetaImagen} />
+      <Image source={{ uri: item.imagen_principal }} style={styles.tarjetaImagen} />
 
       <View style={styles.tarjetaBadgeContainer}>
         {visibles.map((b, i) => (
@@ -181,7 +181,11 @@ export default function HomeScreen() {
 
   useEffect(() => {
     obtenerDepartamentos()
-      .then(setDepas)
+      .then(data => {
+        console.log("Departamentos recibidos:", data); // ← agrega esto temporalmente
+        setDepas(data);
+      })
+      .catch(err => console.error("Error cargando depas:", err))  // ← nuevo
       .finally(() => setCargando(false));
   }, []);
 
@@ -243,7 +247,7 @@ export default function HomeScreen() {
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) => String(item.id)}
             renderItem={({ item }) => {
             const badges = [];
 
@@ -299,7 +303,7 @@ export default function HomeScreen() {
                 onPress={() => router.push(`/departamento/${item.id}`)}
               >
                 <Image
-                  source={{ uri: item.imagen }}
+                  source={{ uri: item.imagen_principal }}
                   style={styles.carouselImagen}
                 />
 

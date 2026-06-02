@@ -201,7 +201,7 @@ export default function DetalleDepa() {
         {/* ── Imagen principal ── */}
         <View style={styles.imagenContainer}>
           <Image
-            source={{ uri: depa.imagen || "https://via.placeholder.com/400x250" }}
+            source={{ uri: depa.imagen_principal || "https://via.placeholder.com/400x250" }}
             style={styles.imagen}
           />
           <TouchableOpacity

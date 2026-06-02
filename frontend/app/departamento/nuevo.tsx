@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import {
   Alert,
+  Image,
   Platform,
   ScrollView,
   StatusBar,
@@ -13,11 +14,34 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import * as ImagePicker from "expo-image-picker";
 import { useAuth } from "../context/AuthContext";
 import { URL_BASE } from "../../services/api";
 
+// ── Helper: convierte URI local a Blob (web) ──────────────────────
+async function uriABlob(uri: string): Promise<Blob> {
+  // Si ya es blob: lo fetchea directo
+  if (uri.startsWith("blob:") || uri.startsWith("http")) {
+    const r = await fetch(uri);
+    return r.blob();
+  }
+  // data:image/... → convierte base64 a Blob
+  const [meta, base64] = uri.split(",");
+  const mime = meta.split(":")[1].split(";")[0];
+  const bytes = atob(base64);
+  const arr = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
+
 // ── Tipos ─────────────────────────────────────────────────────────
 type TipoRenta = "solo_mujeres" | "solo_hombres" | "mixto";
+
+type ImagenLocal = {
+  uri:  string;
+  name: string;
+  type: string;
+};
 
 type FormData = {
   titulo:          string;
@@ -66,6 +90,20 @@ const AMENIDADES: { key: keyof FormData; label: string; emoji: string }[] = [
   { key: "pet_friendly",    label: "Pet friendly",     emoji: "🐾" },
   { key: "cocina",          label: "Cocina equipada",  emoji: "🍳" },
 ];
+
+const MAX_GALERIA = 9; // principal + 9 adicionales = 10 en total
+
+// ── Helpers imagen ────────────────────────────────────────────────
+function nombreArchivo(uri: string): string {
+  return uri.split("/").pop() ?? `img_${Date.now()}.jpg`;
+}
+
+function mimeDesdeUri(uri: string): string {
+  const ext = uri.split(".").pop()?.toLowerCase();
+  if (ext === "png")  return "image/png";
+  if (ext === "webp") return "image/webp";
+  return "image/jpeg";
+}
 
 // ── Subcomponentes ────────────────────────────────────────────────
 function Campo({
@@ -118,28 +156,87 @@ function FilaSwitch({
 
 // ── Pantalla principal ────────────────────────────────────────────
 export default function NuevoDepartamento() {
-  const router        = useRouter();
-  const { usuario }   = useAuth();
-  const [form, setForm]         = useState<FormData>(FORM_INICIAL);
+  const router      = useRouter();
+  const { usuario } = useAuth();
+
+  const [form, setForm]           = useState<FormData>(FORM_INICIAL);
   const [guardando, setGuardando] = useState(false);
-  const [errores, setErrores]   = useState<Partial<Record<keyof FormData, string>>>({});
+  const [errores, setErrores]     = useState<Partial<Record<keyof FormData | "imagen_principal", string>>>({});
+
+  // ── Estado de imágenes ────────────────────────────────────────
+  const [imagenPrincipal, setImagenPrincipal] = useState<ImagenLocal | null>(null);
+  const [galeria, setGaleria]                 = useState<ImagenLocal[]>([]);
 
   const set = (campo: keyof FormData) => (valor: any) =>
     setForm(prev => ({ ...prev, [campo]: valor }));
 
+  // ── Selección de imagen principal ─────────────────────────────
+  const seleccionarPrincipal = async () => {
+    const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permiso.granted) {
+      Alert.alert("Permiso requerido", "Necesitamos acceso a tu galería.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.8,
+      allowsEditing: true,
+      aspect: [16, 9],
+    });
+    if (result.canceled) return;
+    const asset = result.assets[0];
+    setImagenPrincipal({
+      uri: asset.uri,
+      name: asset.fileName || `imagen_${Date.now()}.jpg`,
+      type: asset.mimeType || "image/jpeg",
+    });
+    // Limpiar error si existía
+    setErrores(prev => ({ ...prev, imagen_principal: undefined }));
+  };
+
+  // ── Selección de imágenes adicionales ─────────────────────────
+  const seleccionarAdicional = async () => {
+    if (galeria.length >= MAX_GALERIA) {
+      Alert.alert("Límite alcanzado", `Puedes agregar máximo ${MAX_GALERIA} imágenes adicionales.`);
+      return;
+    }
+    const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permiso.granted) {
+      Alert.alert("Permiso requerido", "Necesitamos acceso a tu galería.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.8,
+      allowsMultipleSelection: true,
+      selectionLimit: MAX_GALERIA - galeria.length,
+    });
+    if (result.canceled) return;
+    const nuevas = result.assets.map(a => ({
+      uri:  a.uri,
+      name: nombreArchivo(a.uri),
+      type: mimeDesdeUri(a.uri),
+    }));
+    setGaleria(prev => [...prev, ...nuevas].slice(0, MAX_GALERIA));
+  };
+
+  const eliminarAdicional = (index: number) =>
+    setGaleria(prev => prev.filter((_, i) => i !== index));
+
   // ── Validación ────────────────────────────────────────────────
   const validar = (): boolean => {
-    const e: Partial<Record<keyof FormData, string>> = {};
-    if (!form.titulo.trim())        e.titulo        = "El título es obligatorio";
-    if (!form.precio.trim())        e.precio        = "El precio es obligatorio";
+    const e: Partial<Record<keyof FormData | "imagen_principal", string>> = {};
+    if (!form.titulo.trim())    e.titulo    = "El título es obligatorio";
+    if (!form.precio.trim())    e.precio    = "El precio es obligatorio";
     else if (isNaN(Number(form.precio)) || Number(form.precio) <= 0)
-                                    e.precio        = "Ingresa un precio válido";
-    if (!form.colonia.trim())       e.colonia       = "La colonia es obligatoria";
-    if (!form.alcaldia.trim())      e.alcaldia      = "La alcaldía es obligatoria";
-    if (!form.direccion.trim())     e.direccion     = "La dirección es obligatoria";
-    if (!form.cuartos.trim())       e.cuartos       = "Indica el número de cuartos";
+                                e.precio    = "Ingresa un precio válido";
+    if (!form.colonia.trim())   e.colonia   = "La colonia es obligatoria";
+    if (!form.alcaldia.trim())  e.alcaldia  = "La alcaldía es obligatoria";
+    if (!form.direccion.trim()) e.direccion = "La dirección es obligatoria";
+    if (!form.cuartos.trim())   e.cuartos   = "Indica el número de cuartos";
     else if (isNaN(Number(form.cuartos)) || Number(form.cuartos) < 1)
-                                    e.cuartos       = "Mínimo 1 cuarto";
+                                e.cuartos   = "Mínimo 1 cuarto";
+    if (!imagenPrincipal)       e.imagen_principal = "La imagen principal es obligatoria";
     setErrores(e);
     return Object.keys(e).length === 0;
   };
@@ -151,49 +248,67 @@ export default function NuevoDepartamento() {
 
     setGuardando(true);
     try {
-      const body = {
-        titulo:          form.titulo.trim(),
-        descripcion:     form.descripcion.trim(),
-        precio:          Number(form.precio),
-        colonia:         form.colonia.trim(),
-        alcaldia:        form.alcaldia.trim(),
-        direccion:       form.direccion.trim(),
-        metro_cercano:   form.metro_cercano.trim(),
-        cuartos:         Number(form.cuartos),
-        tipo_renta:      form.tipo_renta,
-        amueblado:       form.amueblado,
-        internet:        form.internet,
-        estacionamiento: form.estacionamiento,
-        pet_friendly:    form.pet_friendly,
-        cocina:          form.cocina,
-        arrendador:      usuario.id,
-      };
+      const formData = new FormData();
+      formData.append("titulo",          form.titulo.trim());
+      formData.append("descripcion",     form.descripcion.trim());
+      formData.append("precio",          String(Number(form.precio)));
+      formData.append("colonia",         form.colonia.trim());
+      formData.append("alcaldia",        form.alcaldia.trim());
+      formData.append("direccion",       form.direccion.trim());
+      formData.append("metro_cercano",   form.metro_cercano.trim());
+      formData.append("cuartos",         String(Number(form.cuartos)));
+      formData.append("tipo_renta",      form.tipo_renta);
+      formData.append("amueblado",       String(form.amueblado));
+      formData.append("internet",        String(form.internet));
+      formData.append("estacionamiento", String(form.estacionamiento));
+      formData.append("pet_friendly",    String(form.pet_friendly));
+      formData.append("cocina",          String(form.cocina));
+      formData.append("arrendador",      String(usuario.id));
+
+      // ── Imagen principal ──────────────────────────────────────
+      if (imagenPrincipal) {
+        const blob = await uriABlob(imagenPrincipal.uri);
+        formData.append("imagen_principal", blob, imagenPrincipal.name);
+      }
 
       const r = await fetch(`${URL_BASE}/departamentos/`, {
-        method:  "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Token ${usuario.token}` },
-        body:    JSON.stringify(body),
+        method: "POST",
+        // ⚠️ Sin Content-Type — el browser lo pone solo con el boundary correcto
+        body: formData,
       });
 
       if (!r.ok) {
         const err = await r.json().catch(() => ({}));
-        Alert.alert("Error", err.detail ?? "No se pudo guardar el departamento");
+        console.error("Error backend:", err);
+        Alert.alert("Error", JSON.stringify(err));
         return;
       }
 
-      if (usuario.estado_verificacion !== "aprobado") {
-        Alert.alert(
-            "Cuenta no verificada",
-            "Debes completar la verificación para publicar."
-        );
+      const depaCreado = await r.json();
+      console.log("Depa creado:", depaCreado);
 
-        return;
-    }
+      // ── Galería ───────────────────────────────────────────────
+      for (const img of galeria) {
+        const fd = new FormData();
+        const blob = await uriABlob(img.uri);
+        fd.append("imagen", blob, img.name);
+
+        const rg = await fetch(`${URL_BASE}/departamentos/${depaCreado.id}/galeria/`, {
+          method: "POST",
+          body:   fd,
+        });
+
+        if (!rg.ok) {
+          const eg = await rg.json().catch(() => ({}));
+          console.warn("Error galería:", eg);
+        }
+      }
 
       Alert.alert("¡Listo!", "Departamento registrado correctamente", [
         { text: "OK", onPress: () => router.back() },
       ]);
-    } catch {
+    } catch (e) {
+      console.error("Error general:", e);
       Alert.alert("Error", "Ocurrió un problema de conexión");
     } finally {
       setGuardando(false);
@@ -249,14 +364,20 @@ export default function NuevoDepartamento() {
           {/* Cuartos */}
           <Text style={styles.campoLabel}>Número de cuartos *</Text>
           <View style={styles.cuartosRow}>
-            {["1", "2", "3", "4", "5+"].map((n) => (
+            {[
+              { value: "1", label: "1" },
+              { value: "2", label: "2" },
+              { value: "3", label: "3" },
+              { value: "4", label: "4" },
+              { value: "5", label: "5+" },
+            ].map((n) => (
               <TouchableOpacity
-                key={n}
-                style={[styles.cuartoBtn, form.cuartos === n && styles.cuartoBtnActivo]}
-                onPress={() => set("cuartos")(n)}
+                key={n.value}
+                style={[styles.cuartoBtn, form.cuartos === n.value && styles.cuartoBtnActivo]}
+                onPress={() => set("cuartos")(n.value)}
               >
-                <Text style={[styles.cuartoBtnTexto, form.cuartos === n && styles.cuartoBtnTextoActivo]}>
-                  {n}
+                <Text style={[styles.cuartoBtnTexto, form.cuartos === n.value && styles.cuartoBtnTextoActivo]}>
+                  {n.label}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -268,36 +389,13 @@ export default function NuevoDepartamento() {
         <View style={styles.seccion}>
           <Text style={styles.seccionTitulo}>📍 Ubicación</Text>
 
-          <Campo
-            label="Colonia *"
-            value={form.colonia}
-            onChange={set("colonia")}
-            placeholder="Ej. Lindavista"
-          />
-          {errores.colonia && <Text style={styles.error}>{errores.colonia}</Text>}
-
-          <Campo
-            label="Alcaldía *"
-            value={form.alcaldia}
-            onChange={set("alcaldia")}
-            placeholder="Ej. Gustavo A. Madero"
-          />
-          {errores.alcaldia && <Text style={styles.error}>{errores.alcaldia}</Text>}
-
-          <Campo
-            label="Dirección completa *"
-            value={form.direccion}
-            onChange={set("direccion")}
-            placeholder="Calle, número, referencias"
-          />
+          <Campo label="Colonia *"            value={form.colonia}       onChange={set("colonia")}       placeholder="Ej. Lindavista" />
+          {errores.colonia   && <Text style={styles.error}>{errores.colonia}</Text>}
+          <Campo label="Alcaldía *"           value={form.alcaldia}      onChange={set("alcaldia")}      placeholder="Ej. Gustavo A. Madero" />
+          {errores.alcaldia  && <Text style={styles.error}>{errores.alcaldia}</Text>}
+          <Campo label="Dirección completa *" value={form.direccion}     onChange={set("direccion")}     placeholder="Calle, número, referencias" />
           {errores.direccion && <Text style={styles.error}>{errores.direccion}</Text>}
-
-          <Campo
-            label="Metro más cercano"
-            value={form.metro_cercano}
-            onChange={set("metro_cercano")}
-            placeholder="Ej. Politécnico"
-          />
+          <Campo label="Metro más cercano"    value={form.metro_cercano} onChange={set("metro_cercano")} placeholder="Ej. Politécnico" />
         </View>
 
         {/* ── Tipo de renta ── */}
@@ -333,6 +431,81 @@ export default function NuevoDepartamento() {
           ))}
         </View>
 
+        {/* ── Imagen principal ── */}
+        <View style={styles.seccion}>
+          <Text style={styles.seccionTitulo}>🖼 Imagen principal *</Text>
+          <Text style={styles.seccionSub}>
+            Será la foto destacada de tu anuncio. Obligatoria.
+          </Text>
+
+          {imagenPrincipal ? (
+            <View style={styles.imagenPrincipalWrapper}>
+              <Image source={{ uri: imagenPrincipal.uri }} style={styles.imagenPrincipalPreview} resizeMode="cover"/>
+              <TouchableOpacity
+                style={styles.imagenPrincipalCambiar}
+                onPress={seleccionarPrincipal}
+              >
+                <Text style={styles.imagenPrincipalCambiarTexto}>✏️ Cambiar imagen</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={[
+                styles.imagenPrincipalBtn,
+                errores.imagen_principal && styles.imagenPrincipalBtnError,
+              ]}
+              onPress={seleccionarPrincipal}
+            >
+              <Text style={styles.imagenPrincipalIcono}>📷</Text>
+              <Text style={styles.imagenPrincipalTexto}>Seleccionar imagen principal</Text>
+              <Text style={styles.imagenPrincipalSub}>JPG, PNG o WEBP</Text>
+            </TouchableOpacity>
+          )}
+          {errores.imagen_principal && (
+            <Text style={styles.error}>{errores.imagen_principal}</Text>
+          )}
+        </View>
+
+        {/* ── Galería adicional ── */}
+        <View style={styles.seccion}>
+          <View style={styles.galeriaHeader}>
+            <Text style={styles.seccionTitulo}>🗂 Fotos adicionales</Text>
+            <Text style={styles.galeriaConteo}>
+              {galeria.length}/{MAX_GALERIA}
+            </Text>
+          </View>
+          <Text style={styles.seccionSub}>
+            Agrega hasta {MAX_GALERIA} fotos más para mostrar tu departamento.
+          </Text>
+
+          {/* Grid de miniaturas */}
+          {galeria.length > 0 && (
+            <View style={styles.galeriaGrid}>
+              {galeria.map((img, i) => (
+                <View key={i} style={styles.galeriaThumbWrapper}>
+                  <Image source={{ uri: img.uri }} style={styles.galeriaThumb} resizeMode="cover"/>
+                  <TouchableOpacity
+                    style={styles.galeriaThumbEliminar}
+                    onPress={() => eliminarAdicional(i)}
+                  >
+                    <Text style={styles.galeriaThumbEliminarTexto}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Botón agregar */}
+          {galeria.length < MAX_GALERIA && (
+            <TouchableOpacity style={styles.galeriaAgregarBtn} onPress={seleccionarAdicional}>
+              <Text style={styles.galeriaAgregarIcono}>＋</Text>
+              <Text style={styles.galeriaAgregarTexto}>
+                {galeria.length === 0 ? "Agregar fotos" : "Agregar más fotos"}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
         {/* ── Botón guardar ── */}
         <TouchableOpacity
           style={[styles.btnGuardar, guardando && styles.btnGuardandoOpacity]}
@@ -340,7 +513,7 @@ export default function NuevoDepartamento() {
           disabled={guardando}
         >
           <Text style={styles.btnGuardarTexto}>
-            {guardando ? "Guardando..." : "Publicar departamento"}
+            {guardando ? "Publicando..." : "Publicar departamento"}
           </Text>
         </TouchableOpacity>
 
@@ -352,8 +525,8 @@ export default function NuevoDepartamento() {
 
 // ── Estilos ───────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container:  { flex: 1, backgroundColor: "#f7f4f0" },
-  scroll:     { paddingBottom: 20 },
+  container: { flex: 1, backgroundColor: "#f7f4f0" },
+  scroll:    { paddingBottom: 20 },
   topBar: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     paddingHorizontal: 16, paddingVertical: 10, backgroundColor: "#f7f4f0",
@@ -373,7 +546,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff", borderRadius: 18, padding: 16,
     shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
   },
-  seccionTitulo: { fontSize: 16, fontWeight: "800", color: "#1a1a1a", marginBottom: 14 },
+  seccionTitulo: { fontSize: 16, fontWeight: "800", color: "#1a1a1a", marginBottom: 4 },
+  seccionSub:    { fontSize: 12, color: "#aaa", marginBottom: 14 },
 
   campoWrapper: { marginBottom: 14 },
   campoLabel:   { fontSize: 13, fontWeight: "700", color: "#555", marginBottom: 6 },
@@ -386,7 +560,7 @@ const styles = StyleSheet.create({
   inputMultiline: { height: 90, textAlignVertical: "top" },
   error: { fontSize: 12, color: "#e63946", marginTop: -8, marginBottom: 8 },
 
-  cuartosRow:      { flexDirection: "row", gap: 8, marginBottom: 14, marginTop: 6 },
+  cuartosRow:           { flexDirection: "row", gap: 8, marginBottom: 14, marginTop: 6 },
   cuartoBtn: {
     flex: 1, paddingVertical: 10, borderRadius: 10,
     backgroundColor: "#f7f4f0", alignItems: "center",
@@ -412,6 +586,52 @@ const styles = StyleSheet.create({
   },
   switchEmoji: { fontSize: 20, width: 32 },
   switchLabel: { flex: 1, fontSize: 14, color: "#333", fontWeight: "600" },
+
+  // Imagen principal
+  imagenPrincipalBtn: {
+    borderWidth: 2, borderColor: "#e0dcd8", borderStyle: "dashed",
+    borderRadius: 14, paddingVertical: 28, alignItems: "center", gap: 6,
+    backgroundColor: "#fafafa",
+  },
+  imagenPrincipalBtnError: { borderColor: "#e63946" },
+  imagenPrincipalIcono:    { fontSize: 32 },
+  imagenPrincipalTexto:    { fontSize: 14, fontWeight: "700", color: "#1a3a8f" },
+  imagenPrincipalSub:      { fontSize: 12, color: "#aaa" },
+  imagenPrincipalWrapper:  { gap: 10 },
+  imagenPrincipalPreview: {
+    width: "100%", height: 180, borderRadius: 12,
+  },
+  imagenPrincipalCambiar: {
+    backgroundColor: "#f0f4ff", borderRadius: 10,
+    paddingVertical: 10, alignItems: "center",
+    borderWidth: 1, borderColor: "#1a3a8f",
+  },
+  imagenPrincipalCambiarTexto: { fontSize: 13, fontWeight: "700", color: "#1a3a8f" },
+
+  // Galería
+  galeriaHeader:  { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  galeriaConteo:  { fontSize: 13, fontWeight: "700", color: "#aaa" },
+  galeriaGrid: {
+    flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12,
+  },
+  galeriaThumbWrapper: { position: "relative" },
+  galeriaThumb: {
+    width: 80, height: 80, borderRadius: 10,
+  },
+  galeriaThumbEliminar: {
+    position: "absolute", top: -6, right: -6,
+    width: 22, height: 22, borderRadius: 11,
+    backgroundColor: "#e63946", justifyContent: "center", alignItems: "center",
+    shadowColor: "#000", shadowOpacity: 0.2, shadowRadius: 3, elevation: 4,
+  },
+  galeriaThumbEliminarTexto: { color: "#fff", fontSize: 10, fontWeight: "900" },
+  galeriaAgregarBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    borderWidth: 2, borderColor: "#e0dcd8", borderStyle: "dashed",
+    borderRadius: 12, paddingVertical: 14, backgroundColor: "#fafafa",
+  },
+  galeriaAgregarIcono: { fontSize: 18, color: "#1a3a8f", fontWeight: "900" },
+  galeriaAgregarTexto: { fontSize: 14, fontWeight: "700", color: "#1a3a8f" },
 
   btnGuardar: {
     marginHorizontal: 16, marginTop: 20,
