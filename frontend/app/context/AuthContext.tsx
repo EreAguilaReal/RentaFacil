@@ -18,6 +18,7 @@ interface UsuarioAuth {
   genero:         string;
   tipo_usuario:   string;
   documento_verificacion: string | null;
+  tipo_documento?: string | null;
   verificado:   boolean;
   estado_verificacion: 'pendiente' | 'aprobado' | 'rechazado' | '';
 }

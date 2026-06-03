@@ -3,15 +3,19 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
+  Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useAuth } from "../context/AuthContext";
 import { URL_BASE } from "../../services/api";
 
 type EstadoCita = "pendiente" | "aceptada" | "rechazada" | "cancelada";
@@ -42,10 +46,18 @@ export default function DetalleCita() {
   const citaId  = Number(Array.isArray(id) ? id[0] : id);
   const esIdValido = Number.isInteger(citaId) && citaId > 0;
 
+  const { usuario } = useAuth();
+  const esArrendador = usuario?.tipo_usuario === "arrendador";
+
   const [cita, setCita]         = useState<Cita | null>(null);
   const [cargando, setCargando] = useState(true);
   const [cancelando, setCancelando] = useState(false);
   const [confirmCancelar, setConfirmCancelar] = useState(false);
+  const [mostrarModalRenta, setMostrarModalRenta] = useState(false);
+  const [duracionMeses, setDuracionMeses] = useState("1");
+  const [fechaInicio, setFechaInicio] = useState<Date>(new Date());
+  const [mostrarDatePicker, setMostrarDatePicker] = useState(false);
+  const [iniciandoRenta, setIniciandoRenta] = useState(false);
 
   useEffect(() => {
     if (!esIdValido) {
@@ -58,7 +70,13 @@ export default function DetalleCita() {
         if (!r.ok) throw new Error();
         return r.json();
       })
-      .then((data) => { setCita(data?.id ? data : null); setCargando(false); })
+      .then((data) => {
+        setCita(data?.id ? data : null);
+        if (data?.fecha_creacion) {
+          setFechaInicio(new Date(data.fecha_creacion));
+        }
+        setCargando(false);
+      })
       .catch(() => setCargando(false));
   }, [citaId, esIdValido]);
 
@@ -111,6 +129,54 @@ export default function DetalleCita() {
     }
   };
 
+  const handleIniciarRenta = () => {
+    setMostrarModalRenta(true);
+  };
+
+  const handleFechaInicioChange = (_event: any, selectedDate?: Date) => {
+    if (selectedDate) {
+      setFechaInicio(selectedDate);
+    }
+    if (Platform.OS !== "ios") {
+      setMostrarDatePicker(false);
+    }
+  };
+
+  const performIniciarRenta = async () => {
+    if (iniciandoRenta || !cita) return;
+    setIniciandoRenta(true);
+
+    try {
+      const r = await fetch(`${URL_BASE}/citas/${cita.id}/cerrar-trato/`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fecha_inicio: fechaInicio.toISOString().slice(0, 10),
+          duracion_meses: Number(duracionMeses),
+        }),
+      });
+
+      if (!r.ok) {
+        const errorData = await r.json().catch(() => null);
+        throw new Error(errorData?.error || "Error al iniciar la renta.");
+      }
+
+      setMostrarModalRenta(false);
+      router.replace("/usuarios/perfil");
+    } catch (error: any) {
+      setIniciandoRenta(false);
+      Alert.alert("Error", error.message || "No se pudo iniciar la renta.");
+    }
+  };
+
+  const fechaInicioTexto = fechaInicio
+    ? fechaInicio.toLocaleDateString("es-MX", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : "Selecciona una fecha";
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <StatusBar barStyle="dark-content" backgroundColor="#f7f4f0" />
@@ -162,6 +228,18 @@ export default function DetalleCita() {
             </TouchableOpacity>
           )}
 
+          {esArrendador && cita.estado === "aceptada" && (
+            <TouchableOpacity
+              style={[styles.btnVerDepa, styles.btnIniciar]}
+              onPress={handleIniciarRenta}
+              disabled={iniciandoRenta}
+            >
+              <Text style={[styles.btnVerDepaTexto, styles.btnIniciarTexto]}>
+                {iniciandoRenta ? "Iniciando renta..." : "Iniciar renta"}
+              </Text>
+            </TouchableOpacity>
+          )}
+
           <Modal
             visible={confirmCancelar}
             transparent
@@ -189,6 +267,100 @@ export default function DetalleCita() {
                     disabled={cancelando}
                   >
                     <Text style={styles.modalBtnTexto}>{cancelando ? "Cancelando..." : "Sí, cancelar"}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
+
+          <Modal
+            visible={mostrarModalRenta}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setMostrarModalRenta(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalBox}>
+                <Text style={styles.modalEmoji}>🏁</Text>
+                <Text style={styles.modalTitulo}>Iniciar renta</Text>
+                <Text style={styles.modalTexto}>
+                  Registra este departamento como rentado para el solicitante.
+                </Text>
+
+                <View style={styles.modalField}>
+                  <Text style={styles.modalLabel}>Duración (meses)</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    keyboardType="numeric"
+                    value={duracionMeses}
+                    onChangeText={setDuracionMeses}
+                    placeholder="1"
+                  />
+                </View>
+
+                <View style={styles.modalField}>
+                  <Text style={styles.modalLabel}>Fecha de inicio</Text>
+                  {Platform.OS === "web" ? (
+                    <input
+                      type="date"
+                      value={fechaInicio.toISOString().slice(0, 10)}
+                      onChange={(e: any) => {
+                        if (e?.target?.value) {
+                          setFechaInicio(new Date(e.target.value));
+                        }
+                      }}
+                      style={{
+                        backgroundColor: "#fafafa",
+                        borderRadius: 12,
+                        borderWidth: 1,
+                        borderColor: "#d0d0d0",
+                        borderStyle: "solid",
+                        paddingVertical: 12,
+                        paddingHorizontal: 14,
+                        fontSize: 15,
+                        color: "#1a1a1a",
+                        width: "100%",
+                        boxSizing: "border-box",
+                        fontFamily: "inherit",
+                      }}
+                    />
+                  ) : (
+                    <>
+                      <TouchableOpacity
+                        style={styles.modalInput}
+                        onPress={() => setMostrarDatePicker(true)}
+                      >
+                        <Text style={styles.modalInputText}>{fechaInicioTexto}</Text>
+                      </TouchableOpacity>
+
+                      {mostrarDatePicker && (
+                        <DateTimePicker
+                          mode="date"
+                          value={fechaInicio}
+                          display="calendar"
+                          onChange={handleFechaInicioChange}
+                        />
+                      )}
+                    </>
+                  )}
+                </View>
+
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={[styles.modalBtn, styles.modalBtnCancel]}
+                    onPress={() => setMostrarModalRenta(false)}
+                    disabled={iniciandoRenta}
+                  >
+                    <Text style={[styles.modalBtnTexto, styles.modalBtnCancelText]}>Cancelar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modalBtn, styles.modalBtnDanger]}
+                    onPress={performIniciarRenta}
+                    disabled={iniciandoRenta}
+                  >
+                    <Text style={styles.modalBtnTexto}>
+                      {iniciandoRenta ? "Iniciando..." : "Iniciar renta"}
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -271,7 +443,13 @@ const styles = StyleSheet.create({
   btnVerDepaTexto:{ fontSize: 13, fontWeight: "700", color: "#1a3a8f" },
   btnCancelar:     { marginTop: 10, backgroundColor: "#fff1f1", borderColor: "#e63946" },
   btnCancelarTexto:{ color: "#e63946" },
+  btnIniciar:      { marginTop: 10, backgroundColor: "#eaf8ed", borderColor: "#2f8a3a" },
+  btnIniciarTexto: { color: "#1f5f21" },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", alignItems: "center", paddingHorizontal: 30 },
+  modalField: { width: "100%", marginBottom: 14 },
+  modalLabel: { fontSize: 13, fontWeight: "700", color: "#444", marginBottom: 6 },
+  modalInput: { width: "100%", borderWidth: 1, borderColor: "#d0d0d0", borderRadius: 12, backgroundColor: "#fafafa", paddingVertical: 12, paddingHorizontal: 14 },
+  modalInputText: { fontSize: 14, color: "#1a1a1a" },
   modalBox: { width: "100%", maxWidth: 360, backgroundColor: "#fff", borderRadius: 20, padding: 24, alignItems: "center" },
   modalEmoji: { fontSize: 34, marginBottom: 10 },
   modalTitulo: { fontSize: 18, fontWeight: "900", color: "#1a1a1a", marginBottom: 8, textAlign: "center" },

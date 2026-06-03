@@ -1,5 +1,5 @@
 // app/(tabs)/configuracion.tsx
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert, Linking, Platform, ScrollView, StatusBar,
   StyleSheet, Switch, Text, TouchableOpacity, View,
@@ -7,16 +7,22 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "../context/AuthContext";
+import { URL_BASE } from "../../services/api";
 
 // ── Componente fila de ajuste ─────────────────────────────────────
 function FilaAjuste({
-  emoji, label, descripcion, onPress, peligro = false,
+  emoji, label, descripcion, onPress, peligro = false, disabled = false,
 }: {
   emoji: string; label: string; descripcion?: string;
-  onPress: () => void; peligro?: boolean;
+  onPress: () => void; peligro?: boolean; disabled?: boolean;
 }) {
   return (
-    <TouchableOpacity style={styles.fila} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity
+      style={[styles.fila, disabled && styles.filaDisabled]}
+      onPress={onPress}
+      activeOpacity={disabled ? 1 : 0.7}
+      disabled={disabled}
+    >
       <View style={[styles.filaIcono, peligro && { backgroundColor: "#fde8ea" }]}>
         <Text style={styles.filaEmoji}>{emoji}</Text>
       </View>
@@ -65,9 +71,49 @@ export default function Configuracion() {
   const router          = useRouter();
   const { usuario, logout } = useAuth();
 
-  const [notificaciones, setNotificaciones] = useState(true);
-  const [mensajesNuevos, setMensajesNuevos] = useState(true);
+  const [notificaciones, setNotificaciones] = useState(false);
+  const [mensajesNuevos, setMensajesNuevos] = useState(false);
   const [temaOscuro, setTemaOscuro]         = useState(false);
+  const [puedeEliminarCuenta, setPuedeEliminarCuenta] = useState(true);
+  const [motivoEliminarCuenta, setMotivoEliminarCuenta] = useState<string | null>(null);
+
+  const mostrarEnDesarrollo = () => {
+    const mensaje = "Lo sentimos, se encuentra en desarrollo";
+    if (Platform.OS === "web") {
+      window.alert(mensaje);
+    } else {
+      Alert.alert("En desarrollo", mensaje);
+    }
+  };
+
+  useEffect(() => {
+    if (!usuario) return;
+
+    fetch(`${URL_BASE}/usuarios/${usuario.id}/`)
+      .then((r) => r.json())
+      .then((data) => {
+        const permitido = data.puede_eliminar_cuenta ?? true;
+        setPuedeEliminarCuenta(permitido);
+
+        if (!permitido) {
+          if (data.tiene_departamentos) {
+            setMotivoEliminarCuenta("No puedes eliminar tu cuenta mientras tengas departamentos registrados.");
+          } else if (data.tiene_citas) {
+            setMotivoEliminarCuenta("No puedes eliminar tu cuenta mientras tengas citas activas.");
+          } else if (data.tiene_departamento_rentado) {
+            setMotivoEliminarCuenta("No puedes eliminar tu cuenta mientras tengas un departamento rentado.");
+          } else {
+            setMotivoEliminarCuenta("No puedes eliminar tu cuenta en este momento.");
+          }
+        } else {
+          setMotivoEliminarCuenta(null);
+        }
+      })
+      .catch(() => {
+        setPuedeEliminarCuenta(true);
+        setMotivoEliminarCuenta(null);
+      });
+  }, [usuario?.id]);
 
   const confirmarCerrarSesion = () => {
     if (Platform.OS === "web") {
@@ -89,10 +135,28 @@ export default function Configuracion() {
     }
   };
 
+  const eliminarCuenta = async () => {
+    if (!usuario) return;
+    try {
+      const response = await fetch(`${URL_BASE}/usuarios/${usuario.id}/`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        alert(data.error ?? "No se pudo eliminar la cuenta");
+        return;
+      }
+      await logout();
+      router.replace("/usuarios/login");
+    } catch (error) {
+      alert("No se pudo eliminar la cuenta");
+    }
+  };
+
   const confirmarEliminarCuenta = () => {
     if (Platform.OS === "web") {
       if (window.confirm("¿Eliminar tu cuenta? Esta acción no se puede deshacer.")) {
-        // lógica de eliminar cuenta
+        eliminarCuenta();
       }
     } else {
       Alert.alert(
@@ -100,7 +164,7 @@ export default function Configuracion() {
         "Esta acción es permanente y no se puede deshacer.",
         [
           { text: "Cancelar", style: "cancel" },
-          { text: "Eliminar", style: "destructive", onPress: () => {} },
+          { text: "Eliminar", style: "destructive", onPress: eliminarCuenta },
         ]
       );
     }
@@ -158,7 +222,7 @@ export default function Configuracion() {
             label="Notificaciones"
             descripcion="Activar o desactivar todas las notificaciones"
             valor={notificaciones}
-            onChange={setNotificaciones}
+            onChange={() => mostrarEnDesarrollo()}
           />
           <View style={styles.separadorFila} />
           <FilaSwitch
@@ -166,7 +230,7 @@ export default function Configuracion() {
             label="Mensajes nuevos"
             descripcion="Recibir alertas de nuevos mensajes"
             valor={mensajesNuevos}
-            onChange={setMensajesNuevos}
+            onChange={() => mostrarEnDesarrollo()}
           />
         </View>
 
@@ -178,7 +242,7 @@ export default function Configuracion() {
             label="Tema oscuro"
             descripcion="Cambiar entre tema claro y oscuro"
             valor={temaOscuro}
-            onChange={setTemaOscuro}
+            onChange={() => mostrarEnDesarrollo()}
           />
         </View>
 
@@ -237,9 +301,10 @@ export default function Configuracion() {
           <FilaAjuste
             emoji="🗑"
             label="Eliminar cuenta"
-            descripcion="Esta acción es permanente"
+            descripcion={motivoEliminarCuenta ?? "Esta acción es permanente"}
             onPress={confirmarEliminarCuenta}
             peligro
+            disabled={!puedeEliminarCuenta}
           />
         </View>
 
@@ -287,6 +352,7 @@ const styles = StyleSheet.create({
   filaLabel:   { fontSize: 15, fontWeight: "700", color: "#1a1a1a" },
   filaDesc:    { fontSize: 12, color: "#aaa", marginTop: 2 },
   filaChevron: { fontSize: 20, color: "#ccc", fontWeight: "300" },
+  filaDisabled: { opacity: 0.45 },
 
   separadorFila: { height: 1, backgroundColor: "#f0ece8", marginLeft: 66 },
 

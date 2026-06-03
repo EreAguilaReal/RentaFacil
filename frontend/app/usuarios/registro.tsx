@@ -197,7 +197,7 @@ export default function Registro() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
-          documento_tipo: docElegido,
+          tipo_documento: docElegido,
         }),
       });
 

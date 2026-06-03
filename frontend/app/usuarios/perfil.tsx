@@ -29,6 +29,16 @@ const GENERO_LABEL: Record<string, string> = {
 const TIPO_LABEL: Record<string, string> = {
   admin: "Administrador", arrendatario: "Arrendatario", arrendador: "Arrendador",
 };
+const TIPO_DOCUMENTO_OPTIONS = ["INE", "Pasaporte", "Identificación oficial"];
+const TIPO_DOCUMENTO_LABELS: Record<string, string> = {
+  credencial: "Credencial",
+  inscripcion: "Comprobante de inscripción",
+  constancia: "Constancia de estudios",
+  escrituras: "Primera y última página de las escrituras",
+  INE: "INE",
+  Pasaporte: "Pasaporte",
+  "Identificación oficial": "Identificación oficial",
+};
 
 type EstadoVerificacion = "pendiente" | "aprobado" | "rechazado" | "";
 
@@ -531,6 +541,16 @@ export default function Perfil() {
   const [cargandoDepas, setCargandoDepas] = useState(false);
   const [citasArrendatario, setCitasArrendatario] = useState<Cita[]>([]);
   const [cargandoCitas, setCargandoCitas]         = useState(false);
+  const [tipoDocumentoSeleccionado, setTipoDocumentoSeleccionado] = useState<string>(TIPO_DOCUMENTO_OPTIONS[0]);
+  const documentoSeleccionadoTexto = usuario?.tipo_documento
+    ? TIPO_DOCUMENTO_LABELS[usuario.tipo_documento] ?? usuario.tipo_documento
+    : tipoDocumentoSeleccionado;
+
+  useEffect(() => {
+    if (usuario?.tipo_documento) {
+      setTipoDocumentoSeleccionado(usuario.tipo_documento);
+    }
+  }, [usuario?.tipo_documento]);
 
   useFocusEffect(
     useCallback(() => {
@@ -592,6 +612,10 @@ export default function Perfil() {
       });
       if (resultado.canceled) return;
       const archivo  = resultado.assets[0];
+      if (!tipoDocumentoSeleccionado) {
+        alert("Selecciona el tipo de documento antes de subirlo.");
+        return;
+      }
       const formData = new FormData();
       if (Platform.OS === "web") {
         formData.append("documento_verificacion", archivo.file as File, archivo.name);
@@ -600,6 +624,7 @@ export default function Perfil() {
           uri: archivo.uri, name: archivo.name, type: "application/pdf",
         } as any);
       }
+      formData.append("tipo_documento", tipoDocumentoSeleccionado);
       const r = await fetch(
         `${URL_BASE}/usuarios/${usuario.id}/subir-documento/`,
         { method: "PATCH", body: formData }
@@ -723,6 +748,9 @@ export default function Perfil() {
                 <Text style={[styles.docTexto, { color: "#e63946", textAlign: "center" }]}>
                   Tu documento fue rechazado.{"\n"}Por favor sube uno nuevo.
                 </Text>
+                <Text style={[styles.docTexto, { marginTop: 8, color: "#555", textAlign: "center" }] }>
+                  Documento requerido: {tipoDocumentoSeleccionado}
+                </Text>
                 <TouchableOpacity style={styles.docBtn} onPress={handleSubirDocumento}>
                   <Text style={styles.docBtnTexto}>📎 Subir nuevo documento</Text>
                 </TouchableOpacity>
@@ -733,6 +761,9 @@ export default function Perfil() {
               <View style={styles.docPendiente}>
                 <Text style={styles.docEmoji}>⏳</Text>
                 <Text style={styles.docTexto}>Documento en espera de verificación</Text>
+                <Text style={[styles.docTexto, { marginTop: 8, color: "#555", textAlign: "center" }] }>
+                  Tipo de documento: {TIPO_DOCUMENTO_LABELS[usuario.tipo_documento ?? ''] ?? usuario.tipo_documento ?? 'Sin selección'}
+                </Text>
                 <TouchableOpacity
                   style={styles.docBtn}
                   onPress={() => Linking.openURL(`${MEDIA_BASE}${usuario.documento_verificacion}`)}
@@ -752,6 +783,9 @@ export default function Perfil() {
               <View style={styles.docPendiente}>
                 <Text style={styles.docEmoji}>📄</Text>
                 <Text style={styles.docTexto}>Sin documento cargado</Text>
+                <Text style={[styles.docTexto, { marginTop: 8, color: "#555", textAlign: "center" }] }>
+                  Documento requerido: {documentoSeleccionadoTexto}
+                </Text>
                 <TouchableOpacity style={styles.docBtn} onPress={handleSubirDocumento}>
                   <Text style={styles.docBtnTexto}>Subir documento</Text>
                 </TouchableOpacity>
@@ -831,6 +865,11 @@ export const styles = StyleSheet.create({
   docTexto:     { fontSize: 14, color: "#555", fontWeight: "600" },
   docBtn:       { backgroundColor: "#1a3a8f", borderRadius: 12, paddingHorizontal: 20, paddingVertical: 10, marginTop: 4 },
   docBtnTexto:  { color: "#fff", fontWeight: "800", fontSize: 13 },
+  tipoDocumentoOpciones: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center", marginTop: 10 },
+  tipoDocumentoOpcion: { borderWidth: 1, borderColor: "#d1d5db", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: "#fff" },
+  tipoDocumentoOpcionActivo: { backgroundColor: "#1a3a8f", borderColor: "#1a3a8f" },
+  tipoDocumentoTexto: { fontSize: 13, color: "#1a1a1a", fontWeight: "700" },
+  tipoDocumentoTextoActivo: { color: "#fff" },
 
   cerrarSesionBtn:   { backgroundColor: "#e63946", borderRadius: 14, paddingVertical: 16, alignItems: "center", marginHorizontal: 16, marginBottom: 40, marginTop: 8 },
   cerrarSesionTexto: { color: "#fff", fontWeight: "900", fontSize: 15 },

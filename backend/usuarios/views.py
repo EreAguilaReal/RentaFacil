@@ -5,11 +5,39 @@ from rest_framework import status
 from django.contrib.auth import authenticate
 from django.conf import settings
 from .models import Usuario
+from departamentos.models import Departamento
+from citas.models import Cita
 
-@api_view(['GET'])
+def puede_eliminar_usuario(usuario):
+    if usuario.tipo_usuario == 'arrendador':
+        return not Departamento.objects.filter(arrendador=usuario).exists()
+
+    if usuario.tipo_usuario == 'arrendatario':
+        tiene_citas = Cita.objects.filter(arrendatario=usuario, estado__in=['pendiente', 'aceptada']).exists()
+        tiene_rentado = Departamento.objects.filter(inquilino=usuario).exists()
+        return not (tiene_citas or tiene_rentado)
+
+    return True
+
+
+@api_view(['GET', 'DELETE'])
 def obtener_usuario(request, id):
     try:
         usuario = Usuario.objects.get(id=id)
+        if request.method == 'DELETE':
+            if not puede_eliminar_usuario(usuario):
+                return Response(
+                    {'error': 'No se puede eliminar la cuenta mientras haya datos asociados.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            usuario.delete()
+            return Response({'mensaje': 'Usuario eliminado correctamente'}, status=status.HTTP_200_OK)
+
+        tiene_departamentos = Departamento.objects.filter(arrendador=usuario).exists()
+        tiene_citas = Cita.objects.filter(arrendatario=usuario, estado__in=['pendiente', 'aceptada']).exists()
+        tiene_departamento_rentado = Departamento.objects.filter(inquilino=usuario).exists()
+        puede_eliminar = puede_eliminar_usuario(usuario)
+
         return Response({
             'id':                      usuario.id,
             'nombre_usuario':          usuario.nombre_usuario,
@@ -19,10 +47,15 @@ def obtener_usuario(request, id):
             'fecha_nacimiento':        str(usuario.fecha_nacimiento),
             'genero':                  usuario.genero,
             'tipo_usuario':            usuario.tipo_usuario,
+            'tipo_documento':          usuario.tipo_documento,
             'documento_verificacion':  usuario.documento_verificacion.url
                 if usuario.documento_verificacion else None,
             'verificado': usuario.verificado,
             'estado_verificacion': usuario.estado_verificacion,
+            'tiene_departamentos': tiene_departamentos,
+            'tiene_citas': tiene_citas,
+            'tiene_departamento_rentado': tiene_departamento_rentado,
+            'puede_eliminar_cuenta': puede_eliminar,
         })
     except Usuario.DoesNotExist:
         return Response({'error': 'No encontrado'}, status=404)
@@ -49,9 +82,14 @@ def subir_documento(request, id):
                     os.remove(ruta)
             usuario.documento_verificacion = None
 
+        tipo_documento = request.data.get('tipo_documento') or request.data.get('documento_tipo')
+        if tipo_documento is not None:
+            usuario.tipo_documento = tipo_documento
+
         usuario.save()
         return Response({
             'mensaje': 'Operación exitosa',
+            'tipo_documento': usuario.tipo_documento,
             'documento_verificacion': usuario.documento_verificacion.url
                 if usuario.documento_verificacion else None,
         }, status=status.HTTP_200_OK)
@@ -81,6 +119,7 @@ def registrar_usuario(request):
             fecha_nacimiento   = data['fecha_nacimiento'],
             genero             = data['genero'],
             tipo_usuario       = data['tipo_usuario'],
+            tipo_documento     = data.get('tipo_documento') or data.get('documento_tipo'),
         )
         return Response({'mensaje': 'Usuario creado exitosamente'}, status=status.HTTP_201_CREATED)
     except Exception as e:
@@ -121,6 +160,7 @@ def login_usuario(request):
     'fecha_nacimiento':        str(usuario.fecha_nacimiento),
     'genero':                  usuario.genero,
     'tipo_usuario':            usuario.tipo_usuario,
+    'tipo_documento':          usuario.tipo_documento,
     'documento_verificacion':  str(usuario.documento_verificacion) if usuario.documento_verificacion else None,
     'verificado': usuario.verificado,
     'estado_verificacion': usuario.estado_verificacion,
@@ -130,7 +170,7 @@ def login_usuario(request):
 def editar_usuario(request, id):
     try:
         usuario = Usuario.objects.get(id=id)
-        campos_editables = ['nombres', 'apellidos', 'nombre_usuario', 'fecha_nacimiento', 'genero']
+        campos_editables = ['nombres', 'apellidos', 'nombre_usuario', 'fecha_nacimiento', 'genero', 'tipo_documento']
         
         for campo in campos_editables:
             if campo in request.data:
@@ -207,6 +247,7 @@ def documentos_pendientes(request):
             'id':            u.id,
             'usuario_nombre': f'{u.nombres} {u.apellidos}',
             'tipo_usuario':  u.tipo_usuario,
+            'tipo_documento': u.tipo_documento,
             'url':           u.documento_verificacion.url if u.documento_verificacion else None,
         }
         for u in usuarios

@@ -1,3 +1,6 @@
+import calendar
+import datetime
+
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
@@ -5,6 +8,14 @@ from .models import Cita
 from .serializers import CitaSerializer
 from departamentos.models import Departamento
 from usuarios.models import Usuario
+
+
+def sumar_meses(fecha: datetime.date, meses: int) -> datetime.date:
+    mes = fecha.month - 1 + meses
+    ano = fecha.year + mes // 12
+    mes = mes % 12 + 1
+    dia = min(fecha.day, calendar.monthrange(ano, mes)[1])
+    return datetime.date(ano, mes, dia)
 
 
 # ── Arrendatario: agendar cita ────────────────────────────────────
@@ -111,12 +122,58 @@ def cerrar_trato(request, cita_id):
     if not depa.disponible:
         return Response({'error': 'El departamento ya no está disponible.'}, status=400)
 
-    rentado_hasta      = request.data.get('rentado_hasta')
-    depa.disponible    = False
-    depa.inquilino     = cita.arrendatario
-    if rentado_hasta:
-        depa.rentado_hasta = rentado_hasta
+    fecha_inicio = request.data.get('fecha_inicio')
+    duracion_meses = request.data.get('duracion_meses')
+    rentado_hasta = request.data.get('rentado_hasta')
+
+    if fecha_inicio is not None or duracion_meses is not None:
+        if fecha_inicio is None or duracion_meses is None:
+            return Response(
+                {'error': 'Se requieren fecha de inicio y duración en meses.'},
+                status=400
+            )
+
+        try:
+            fecha_inicio_date = datetime.datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
+        except (ValueError, TypeError):
+            return Response(
+                {'error': 'Fecha de inicio inválida. Usa el formato YYYY-MM-DD.'},
+                status=400
+            )
+
+        try:
+            duracion_meses = int(duracion_meses)
+            if duracion_meses <= 0:
+                raise ValueError()
+        except (ValueError, TypeError):
+            return Response(
+                {'error': 'Duración inválida. Debe ser un número entero mayor a 0.'},
+                status=400
+            )
+
+        rentado_hasta_date = sumar_meses(fecha_inicio_date, duracion_meses)
+        rentado_hasta = rentado_hasta_date.isoformat()
+    elif rentado_hasta:
+        try:
+            datetime.datetime.strptime(rentado_hasta, "%Y-%m-%d").date()
+        except (ValueError, TypeError):
+            return Response(
+                {'error': 'rentado_hasta inválido. Usa el formato YYYY-MM-DD.'},
+                status=400
+            )
+    else:
+        return Response(
+            {'error': 'Se requieren fecha de inicio y duración para iniciar la renta.'},
+            status=400
+        )
+
+    depa.disponible = False
+    depa.inquilino = cita.arrendatario
+    depa.rentado_hasta = rentado_hasta
     depa.save()
+
+    cita.estado = 'cancelada'
+    cita.save()
 
     return Response({
         'mensaje':      'Trato cerrado correctamente.',
