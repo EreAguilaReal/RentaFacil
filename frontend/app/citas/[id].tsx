@@ -311,18 +311,15 @@ export default function DetalleCita() {
                       }}
                       style={{
                         backgroundColor: "#fafafa",
-                        borderRadius: 12,
-                        borderWidth: 1,
-                        borderColor: "#d0d0d0",
-                        borderStyle: "solid",
-                        paddingVertical: 12,
-                        paddingHorizontal: 14,
-                        fontSize: 15,
+                        borderRadius: "12px",
+                        border: "1px solid #d0d0d0",
+                        padding: "12px 14px",
+                        fontSize: "15px",
                         color: "#1a1a1a",
                         width: "100%",
                         boxSizing: "border-box",
                         fontFamily: "inherit",
-                      }}
+                      } as any}
                     />
                   ) : (
                     <>

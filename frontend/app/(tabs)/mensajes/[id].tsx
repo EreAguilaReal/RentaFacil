@@ -1,3 +1,7 @@
+// app/(tabs)/mensajes/[id].tsx
+// [id] = ID del otro usuario (arrendador/arrendatario)
+// Al montar, crea o recupera el chat real y luego opera con chat_id.
+
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator, FlatList, KeyboardAvoidingView,
@@ -25,35 +29,63 @@ function formatHora(iso: string) {
 export default function Conversacion() {
   const router  = useRouter();
   const params  = useLocalSearchParams<{ id: string; nombre: string; tipo: string }>();
-  const id      = params.id;
+  const otroId  = params.id;       // ID del otro usuario
   const nombre  = params.nombre ?? "";
   const tipo    = params.tipo   ?? "";
 
   const { usuario }             = useAuth();
+  const [chatId, setChatId]     = useState<number | null>(null);
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
   const [texto, setTexto]       = useState("");
   const [cargando, setCargando] = useState(true);
   const [enviando, setEnviando] = useState(false);
+  const [error, setError]       = useState("");
   const flatRef                 = useRef<FlatList>(null);
 
+  // ── Paso 1: crear o recuperar el chat ──────────────────────────
+  useEffect(() => {
+    if (!usuario || !nombre) return;
+
+    fetch(`${URL_BASE}/mensajes/${usuario.id}/chats/crear/`, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ busqueda: nombre }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.id) {
+          setChatId(data.id);
+        } else {
+          setError("No se pudo abrir la conversación.");
+          setCargando(false);
+        }
+      })
+      .catch(() => {
+        setError("Error de conexión al abrir el chat.");
+        setCargando(false);
+      });
+  }, [usuario?.id, nombre]);
+
+  // ── Paso 2: cargar mensajes una vez que tengamos chatId ─────────
   const cargarMensajes = useCallback(async () => {
-    if (!usuario || !id) return;
+    if (!usuario || !chatId) return;
     try {
-      const res  = await fetch(`${URL_BASE}/mensajes/${usuario.id}/chats/${id}/mensajes/`);
+      const res  = await fetch(`${URL_BASE}/mensajes/${usuario.id}/chats/${chatId}/mensajes/`);
       const data = await res.json();
-      setMensajes(data);
+      setMensajes(Array.isArray(data) ? data : []);
     } catch {
       // silencioso en polling
     } finally {
       setCargando(false);
     }
-  }, [usuario, id]);
+  }, [usuario?.id, chatId]);
 
   useEffect(() => {
+    if (!chatId) return;
     cargarMensajes();
     const intervalo = setInterval(cargarMensajes, 3000);
     return () => clearInterval(intervalo);
-  }, [cargarMensajes]);
+  }, [cargarMensajes, chatId]);
 
   useEffect(() => {
     if (mensajes.length > 0) {
@@ -61,14 +93,15 @@ export default function Conversacion() {
     }
   }, [mensajes]);
 
+  // ── Enviar mensaje ───────────────────────────────────────────────
   const enviarMensaje = async () => {
-    if (!texto.trim() || !usuario || enviando) return;
+    if (!texto.trim() || !usuario || !chatId || enviando) return;
     const textoActual = texto.trim();
     setTexto("");
     setEnviando(true);
     try {
       const res = await fetch(
-        `${URL_BASE}/mensajes/${usuario.id}/chats/${id}/enviar/`,
+        `${URL_BASE}/mensajes/${usuario.id}/chats/${chatId}/enviar/`,
         {
           method:  "POST",
           headers: { "Content-Type": "application/json" },
@@ -85,8 +118,8 @@ export default function Conversacion() {
   };
 
   const renderMensaje = ({ item, index }: { item: Mensaje; index: number }) => {
-    const esMio      = item.emisor_id === usuario?.id;
-    const anterior   = index > 0 ? mensajes[index - 1] : null;
+    const esMio    = item.emisor_id === usuario?.id;
+    const anterior = index > 0 ? mensajes[index - 1] : null;
     const mismaFecha = anterior &&
       new Date(anterior.enviado_en).toDateString() === new Date(item.enviado_en).toDateString();
 
@@ -132,9 +165,7 @@ export default function Conversacion() {
         </View>
         <View style={styles.headerTextos}>
           <Text style={styles.headerNombre} numberOfLines={1}>{nombre}</Text>
-          {tipoLabel ? (
-            <Text style={styles.headerTipo}>{tipoLabel}</Text>
-          ) : null}
+          {tipoLabel ? <Text style={styles.headerTipo}>{tipoLabel}</Text> : null}
         </View>
       </View>
       <View style={styles.separador} />
@@ -147,6 +178,10 @@ export default function Conversacion() {
       >
         {cargando ? (
           <ActivityIndicator style={{ marginTop: 40 }} color="#1a3a8f" size="large" />
+        ) : error ? (
+          <View style={styles.vacio}>
+            <Text style={styles.vacioTexto}>⚠ {error}</Text>
+          </View>
         ) : (
           <FlatList
             ref={flatRef}
@@ -177,9 +212,9 @@ export default function Conversacion() {
             onSubmitEditing={Platform.OS === "web" ? enviarMensaje : undefined}
           />
           <TouchableOpacity
-            style={[styles.sendBtn, (!texto.trim() || enviando) && { opacity: 0.4 }]}
+            style={[styles.sendBtn, (!texto.trim() || enviando || !chatId) && { opacity: 0.4 }]}
             onPress={enviarMensaje}
-            disabled={!texto.trim() || enviando}
+            disabled={!texto.trim() || enviando || !chatId}
           >
             {enviando
               ? <ActivityIndicator color="#fff" size="small" />

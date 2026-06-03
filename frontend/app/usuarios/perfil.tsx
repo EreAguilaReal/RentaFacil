@@ -52,6 +52,8 @@ type Departamento = {
   calificacion?: number;
   rentado_hasta?: string;
   inquilino_nombre?: string;
+  arrendador: number;
+  arrendador_nombre: string;
 };
 
 type Cita = {
@@ -310,19 +312,22 @@ function VistaArrendatario({ depas, cargando, router, citas, cargandoCitas }: {
             <View style={styles.accionesDepRow}>
               <TouchableOpacity
                 style={[styles.btnAccion, styles.btnDanger]}
-                onPress={() => router.push(`/departamento/${d.id}/reporte`)}
+                onPress={() => router.push(`/departamento/reporte-depa?id=${d.id}`)}
               >
                 <Text style={styles.btnTextoBlanco}>⚠ Reportar</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.btnAccion}
-                onPress={() => router.push(`/departamento/${d.id}/calificar`)}
+                onPress={() => router.push(`/departamento/calificar-depa?id=${d.id}`)}
               >
                 <Text style={styles.btnTextoOscuro}>★ Calificar</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.btnAccion, styles.btnPrimary]}
-                onPress={() => router.push(`/departamento/${d.id}/contacto`)}
+                onPress={() => {
+                const nombre = encodeURIComponent(d.arrendador_nombre ??"Arrendador");
+                router.push(`/mensajes/${d.arrendador}?nombre=${nombre}&tipo=arrendador`);
+              }}
               >
                 <Text style={styles.btnTextoBlanco}>📞 Contactar</Text>
               </TouchableOpacity>
