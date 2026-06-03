@@ -25,10 +25,10 @@ const HORARIOS = [
 
 // ── Íconos top bar ────────────────────────────────────────────────
 const TOP_ICONS = [
-  { key: "perfil",    emoji: "👤" },
-  { key: "favoritos", emoji: "🤍" },
-  { key: "chat",      emoji: "💬" },
-  { key: "ajustes",   emoji: "⚙️" },
+  { key: "perfil",    emoji: "👤", route: "/usuarios/perfil" },
+  { key: "favoritos", emoji: "🤍", route: "/favoritos" },
+  { key: "chat",      emoji: "💬", route: "/mensajes" },
+  { key: "ajustes",   emoji: "⚙️", route: "/configuracion" },
 ];
 
 // ── Dropdown simple ───────────────────────────────────────────────
@@ -103,6 +103,7 @@ const dropStyles = StyleSheet.create({
 export default function AgendarScreen() {
   const { id } = useLocalSearchParams();           // id del departamento
   const { usuario } = useAuth();
+  const [arrendadorId, setArrendadorId] = useState<number | null>(null);
   const [enviando, setEnviando] = useState(false);
   const router = useRouter();
 
@@ -125,6 +126,11 @@ export default function AgendarScreen() {
     }
 
     if (!usuario || !id) return;
+    // Evitar que el arrendador agende visita a su propio depto
+    if (arrendadorId && usuario.id === arrendadorId) {
+      alert('Lo sentimos pero no es posible agendar una visita a tu propio departamento');
+      return;
+    }
     setEnviando(true);
     try {
       const r = await fetch(`${URL_BASE}/citas/agendar/`, {
@@ -147,10 +153,25 @@ export default function AgendarScreen() {
     }
   };
 
-  // botón Siguiente:
-  // <TouchableOpacity ... onPress={handleSiguiente} disabled={enviando}>
-  //   <Text>{enviando ? "Agendando..." : "Siguiente"}</Text>
-  // </TouchableOpacity>
+  // Cargar arrendador del departamento para evitar que se agende a sí mismo
+  React.useEffect(() => {
+    if (!id) return;
+    (async () => {
+      try {
+        const r = await fetch(`${URL_BASE}/departamentos/${id}/`);
+        if (!r.ok) return;
+        const data = await r.json();
+        const arr = data.arrendador;
+        const aid = typeof arr === 'object' ? arr.id : Number(arr);
+        if (!Number.isNaN(aid)) setArrendadorId(aid);
+      } catch (_) {}
+    })();
+  }, [id]);
+
+  const handleIconPress = (route: string, key: string) => {
+    setIconActivo(key);
+    router.push(route as any);
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -158,23 +179,28 @@ export default function AgendarScreen() {
 
       {/* ── Top Bar ── */}
       <View style={styles.topBar}>
-        <View style={styles.topIconsLeft}>
-          {TOP_ICONS.map((ic) => (
-            <TouchableOpacity
-              key={ic.key}
-              style={[styles.topIconBtn, iconActivo === ic.key && styles.topIconBtnActivo]}
-              onPress={() => setIconActivo(ic.key)}
-              activeOpacity={0.75}
-            >
-              <Text style={styles.topIconEmoji}>{ic.emoji}</Text>
-            </TouchableOpacity>
-          ))}
+        <View style={styles.topBarLeft}>
+          <TouchableOpacity style={styles.accionBtn} onPress={() => router.back()} activeOpacity={0.75}>
+            <Text style={styles.accionEmoji}>←</Text>
+          </TouchableOpacity>
+          <View style={styles.topIconsLeft}>
+            {TOP_ICONS.map((ic) => (
+              <TouchableOpacity
+                key={ic.key}
+                style={[styles.topIconBtn, iconActivo === ic.key && styles.topIconBtnActivo]}
+                onPress={() => handleIconPress(ic.route, ic.key)}
+                activeOpacity={0.75}
+              >
+                <Text style={styles.topIconEmoji}>{ic.emoji}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
         <View style={styles.topLogos}>
           <View style={styles.logoBadge}>
             <Text style={styles.logoTexto}>IPN</Text>
           </View>
-          <View style={[styles.logoBadge, { backgroundColor: "#003366" }]}>
+          <View style={[styles.logoBadge, { backgroundColor: "#003366" }]}> 
             <Text style={styles.logoTexto}>ESCOM</Text>
           </View>
         </View>
@@ -183,21 +209,6 @@ export default function AgendarScreen() {
       <View style={styles.separador} />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-
-        {/* ── Barra de acciones ── */}
-        <View style={styles.accionesBar}>
-          <TouchableOpacity style={styles.accionBtn} onPress={() => router.back()}>
-            <Text style={styles.accionEmoji}>←</Text>
-          </TouchableOpacity>
-          <View style={styles.accionesRight}>
-            <TouchableOpacity style={styles.accionBtn}>
-              <Text style={styles.accionEmoji}>⬆️</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.accionBtn}>
-              <Text style={styles.accionEmoji}>🔖</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
 
         {/* ── Título ── */}
         <View style={styles.tituloContainer}>
@@ -325,6 +336,7 @@ const styles = StyleSheet.create({
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     paddingHorizontal: 16, paddingVertical: 10, backgroundColor: "#f7f4f0",
   },
+  topBarLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
   topIconsLeft: { flexDirection: "row", gap: 6 },
   topIconBtn: {
     width: 40, height: 40, borderRadius: 12, backgroundColor: "#fff",
@@ -397,7 +409,7 @@ const styles = StyleSheet.create({
     justifyContent: "center", alignItems: "center", paddingHorizontal: 32,
   },
   modalContenido: {
-    backgroundColor: "#8a8a8a", borderRadius: 20,
+    backgroundColor: "#3a4a8f", borderRadius: 20,
     padding: 28, width: "100%", alignItems: "center",
   },
   modalTitulo: {
@@ -411,7 +423,7 @@ const styles = StyleSheet.create({
   errorBullet: { color: "#fff", fontSize: 16, fontWeight: "900" },
   errorTexto: { color: "#fff", fontSize: 15, fontWeight: "600", flex: 1 },
   modalBtn: {
-    backgroundColor: "#1a3a8f", borderRadius: 30,
+    backgroundColor: "#1a233d", borderRadius: 30,
     paddingVertical: 14, paddingHorizontal: 40,
     marginTop: 16,
   },

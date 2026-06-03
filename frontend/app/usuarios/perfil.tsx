@@ -651,12 +651,17 @@ export default function Perfil() {
 
       {/* Top Bar */}
       <View style={styles.topBar}>
+        <View style={styles.topBarLeft}>
+          <TouchableOpacity style={styles.accionBtn} onPress={() => router.back()} activeOpacity={0.75}>
+            <Text style={styles.accionEmoji}>←</Text>
+          </TouchableOpacity>
+        </View>
         <View style={styles.topLogos}>
-          <TouchableOpacity onPress={() => Linking.openURL("https://www.ipn.mx")}>
+          <TouchableOpacity onPress={() => Linking.openURL("https://www.ipn.mx")}> 
             <View style={styles.logoBadge}><Text style={styles.logoTexto}>IPN</Text></View>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => Linking.openURL("https://www.escom.ipn.mx")}>
-            <View style={[styles.logoBadge, { backgroundColor: "#003366" }]}>
+            <View style={[styles.logoBadge, { backgroundColor: "#003366" }]}> 
               <Text style={styles.logoTexto}>ESCOM</Text>
             </View>
           </TouchableOpacity>
@@ -667,11 +672,8 @@ export default function Perfil() {
 
       <ScrollView showsVerticalScrollIndicator={false}>
 
-        {/* Barra de acciones */}
+        {/* Barra de acciones (editar en la posición anterior) */}
         <View style={styles.accionesBar}>
-          <TouchableOpacity style={styles.accionBtn} onPress={() => router.push("/(tabs)")}>
-            <Text style={styles.accionEmoji}>←</Text>
-          </TouchableOpacity>
           <TouchableOpacity
             style={styles.accionBtnEditar}
             onPress={() => router.push("/usuarios/editar")}
@@ -794,7 +796,8 @@ export default function Perfil() {
 
 export const styles = StyleSheet.create({
   container:  { flex: 1, backgroundColor: "#f7f4f0" },
-  topBar:     { flexDirection: "row", justifyContent: "flex-end", alignItems: "center", paddingHorizontal: 16, paddingVertical: 10, backgroundColor: "#f7f4f0" },
+  topBar:     { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingVertical: 10, backgroundColor: "#f7f4f0" },
+  topBarLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
   topLogos:   { flexDirection: "row", gap: 6, alignItems: "center" },
   logoBadge:  { backgroundColor: "#8B0000", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
   logoTexto:  { color: "#fff", fontWeight: "800", fontSize: 12, letterSpacing: 0.5 },

@@ -20,9 +20,10 @@ const { height } = Dimensions.get("window");
 
 // ── Íconos top bar ────────────────────────────────────────────────
 const TOP_ICONS = [
-  { key: "perfil",    emoji: "👤" },
-  { key: "chat",      emoji: "💬" },
-  { key: "ajustes",   emoji: "⚙️" },
+  { key: "perfil",   emoji: "👤", route: "/usuarios/perfil" },
+  { key: "chat",     emoji: "💬", route: "/mensajes" },
+  { key: "ajustes",  emoji: "⚙️", route: "/configuracion" },
+  { key: "favoritos", emoji: "🤍", route: "/favoritos" },
 ];
 
 export default function FotosScreen() {
@@ -114,7 +115,13 @@ export default function FotosScreen() {
       },
     })
   ).current;
-    if (loading) {
+
+  const handleIconPress = (route: string, key: string) => {
+    setIconActivo(key);
+    router.push(route as any);
+  };
+
+  if (loading) {
     return (
       <SafeAreaView
         style={{
@@ -165,44 +172,34 @@ export default function FotosScreen() {
 
       {/* ── Top Bar ── */}
       <View style={styles.topBar}>
-        <View style={styles.topIconsLeft}>
-          {TOP_ICONS.map((ic) => (
-            <TouchableOpacity
-              key={ic.key}
-              style={[styles.topIconBtn, iconActivo === ic.key && styles.topIconBtnActivo]}
-              onPress={() => setIconActivo(ic.key)}
-              activeOpacity={0.75}
-            >
-              <Text style={styles.topIconEmoji}>{ic.emoji}</Text>
-            </TouchableOpacity>
-          ))}
+        <View style={styles.topBarLeft}>
+          <TouchableOpacity style={styles.accionBtn} onPress={() => router.back()} activeOpacity={0.75}>
+            <Text style={styles.accionEmoji}>←</Text>
+          </TouchableOpacity>
+          <View style={styles.topIconsLeft}>
+            {TOP_ICONS.map((ic) => (
+              <TouchableOpacity
+                key={ic.key}
+                style={[styles.topIconBtn, iconActivo === ic.key && styles.topIconBtnActivo]}
+                onPress={() => handleIconPress(ic.route, ic.key)}
+                activeOpacity={0.75}
+              >
+                <Text style={styles.topIconEmoji}>{ic.emoji}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
         <View style={styles.topLogos}>
           <View style={styles.logoBadge}>
             <Text style={styles.logoTexto}>IPN</Text>
           </View>
-          <View style={[styles.logoBadge, { backgroundColor: "#003366" }]}>
+          <View style={[styles.logoBadge, { backgroundColor: "#003366" }]}> 
             <Text style={styles.logoTexto}>ESCOM</Text>
           </View>
         </View>
       </View>
 
       <View style={styles.separador} />
-
-      {/* ── Barra de acciones ── */}
-      <View style={styles.accionesBar}>
-        <TouchableOpacity style={styles.accionBtn} onPress={() => router.back()}>
-          <Text style={styles.accionEmoji}>←</Text>
-        </TouchableOpacity>
-        <View style={styles.accionesRight}>
-          <TouchableOpacity style={styles.accionBtn}>
-            <Text style={styles.accionEmoji}>⬆️</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.accionBtn}>
-            <Text style={styles.accionEmoji}>🔖</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
 
       {/* ── Galería ── */}
       <ScrollView
@@ -292,6 +289,7 @@ const styles = StyleSheet.create({
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     paddingHorizontal: 16, paddingVertical: 10, backgroundColor: "#f7f4f0",
   },
+  topBarLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
   topIconsLeft: { flexDirection: "row", gap: 6 },
   topIconBtn: {
     width: 40, height: 40, borderRadius: 12, backgroundColor: "#fff",

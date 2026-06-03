@@ -224,7 +224,7 @@ export default function HomeScreen() {
             <Text style={styles.subtitulo}>Encuentra tu depa en CDMX</Text>
           </View>
           <TouchableOpacity style={styles.avatarBtn} onPress={() => router.push("/usuarios/perfil")}>
-            <Text style={styles.avatarTexto}>RF</Text>
+            <Text style={styles.avatarTexto}>{getInitials(usuario)}</Text>
           </TouchableOpacity>
         </View>
 
@@ -374,6 +374,19 @@ export default function HomeScreen() {
       />
     </SafeAreaView>
   );
+}
+
+function getInitials(usuario: any) {
+  if (!usuario) return 'RF';
+  const nombres = (usuario.nombres || '').trim();
+  const apellidos = (usuario.apellidos || '').trim();
+  if (nombres || apellidos) {
+    const first = nombres ? nombres.split(' ')[0][0] : '';
+    const last = apellidos ? apellidos.split(' ')[0][0] : '';
+    return `${(first || '').toUpperCase()}${(last || '').toUpperCase()}` || (usuario.nombre_usuario ? usuario.nombre_usuario.slice(0,2).toUpperCase() : 'RF');
+  }
+  if (usuario.nombre_usuario) return usuario.nombre_usuario.slice(0,2).toUpperCase();
+  return 'RF';
 }
 
 // ── Estilos ───────────────────────────────────────────────────────

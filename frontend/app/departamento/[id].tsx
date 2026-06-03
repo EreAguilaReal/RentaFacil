@@ -17,6 +17,7 @@ import {
   Departamento,
   obtenerIdsFavoritos,
   toggleFavorito,
+  URL_BASE,
 } from "./../../services/api";
 import { useAuth } from "./../context/AuthContext";
 
@@ -38,11 +39,12 @@ const OPINIONES_MOCK: Opinion[] = [
   { id: 5, nombre: "Carlos Ruiz",  calificacion: 4, comentario: "Buen departamento, cerca del metro, recomendado",                             meses: 2 },
 ];
 
-// ── TOP_ICONS solo con los íconos estáticos (favorito se maneja aparte) ──
+// ── TOP_ICONS solo con los íconos estáticos ──
 const TOP_ICONS = [
-  { key: "perfil",  emoji: "👤" },
-  { key: "chat",    emoji: "💬" },
-  { key: "ajustes", emoji: "⚙️" },
+  { key: "perfil",   emoji: "👤", route: "/usuarios/perfil" },
+  { key: "chat",     emoji: "💬", route: "/mensajes" },
+  { key: "ajustes",  emoji: "⚙️", route: "/configuracion" },
+  { key: "favoritos", emoji: "🤍", route: "/favoritos" },
 ];
 
 const AMENIDADES = [
@@ -88,6 +90,7 @@ export default function DetalleDepa() {
   const [opinionIndex, setOpinionIndex]     = useState(0);
   const [mostrarTodasOp, setMostrarTodasOp] = useState(false);
   const [esFavorito, setEsFavorito]         = useState(false);
+  const [arrendadorInfo, setArrendadorInfo] = useState<any | null>(null);
 
   // Carga departamento
   useEffect(() => {
@@ -97,6 +100,29 @@ export default function DetalleDepa() {
         .catch(() => setCargando(false));
     }
   }, [id]);
+
+  // Carga detalles del arrendador si el departamento lo tiene como id
+  useEffect(() => {
+    if (!depa) return;
+    const arr = (depa as any).arrendador;
+    if (!arr) return;
+    // Si ya viene como objeto con nombres/apellidos
+    if (typeof arr === 'object') {
+      setArrendadorInfo(arr);
+      return;
+    }
+    // Si viene como id, solicitar al endpoint de usuarios
+    (async () => {
+      try {
+        const r = await fetch(`${URL_BASE}/usuarios/${arr}/`);
+        if (!r.ok) throw new Error('No encontrado');
+        const data = await r.json();
+        setArrendadorInfo(data);
+      } catch (_) {
+        setArrendadorInfo(null);
+      }
+    })();
+  }, [depa]);
 
   // Verifica si es favorito una vez que depa carga
   useEffect(() => {
@@ -110,6 +136,11 @@ export default function DetalleDepa() {
     if (!usuario || !depa) return;
     await toggleFavorito(usuario.id, depa.id, esFavorito);
     setEsFavorito(prev => !prev);
+  };
+
+  const handleIconPress = (route: string, key: string) => {
+    setIconActivo(key);
+    router.push(route as any);
   };
 
   if (cargando) {
@@ -135,9 +166,16 @@ export default function DetalleDepa() {
   const amenidadesActivas   = AMENIDADES.filter((a) => (depa as any)[a.key]);
   const amenidadesMostradas = mostrarTodas ? amenidadesActivas : amenidadesActivas.slice(0, 3);
   const opinionesMostradas  = mostrarTodasOp ? OPINIONES_MOCK : OPINIONES_MOCK.slice(opinionIndex, opinionIndex + 3);
-  const calificacionPromedio = OPINIONES_MOCK.reduce((s, o) => s + o.calificacion, 0) / OPINIONES_MOCK.length;
+  const calificacionPromedio = (depa && (depa as any).calificacion != null)
+    ? Number((depa as any).calificacion)
+    : OPINIONES_MOCK.reduce((s, o) => s + o.calificacion, 0) / OPINIONES_MOCK.length;
 
   const handleApartar = () => {
+    const arrId = arrendadorInfo?.id ?? (typeof (depa as any).arrendador === 'object' ? (depa as any).arrendador.id : Number((depa as any).arrendador));
+    if (usuario && arrId && usuario.id === arrId) {
+      alert('Lo sentimos pero no es posible apartar tu propio departamento');
+      return;
+    }
     if (!depa.disponible) setModalOcupado(true);
     else alert("¡Departamento apartado!");
   };
@@ -148,32 +186,28 @@ export default function DetalleDepa() {
 
       {/* ── Top Bar ── */}
       <View style={styles.topBar}>
-        <View style={styles.topIconsLeft}>
-          {/* Íconos estáticos */}
-          {TOP_ICONS.map((ic) => (
-            <TouchableOpacity
-              key={ic.key}
-              style={[styles.topIconBtn, iconActivo === ic.key && styles.topIconBtnActivo]}
-              onPress={() => setIconActivo(ic.key)}
-              activeOpacity={0.75}
-            >
-              <Text style={styles.topIconEmoji}>{ic.emoji}</Text>
-            </TouchableOpacity>
-          ))}
-          {/* Botón favorito dinámico */}
-          <TouchableOpacity
-            style={[styles.topIconBtn, esFavorito && styles.topIconBtnActivo]}
-            onPress={handleToggleFavorito}
-            activeOpacity={0.75}
-          >
-            <Text style={styles.topIconEmoji}>{esFavorito ? "❤️" : "🤍"}</Text>
+        <View style={styles.topBarLeft}>
+          <TouchableOpacity style={styles.accionBtn} onPress={() => router.back()} activeOpacity={0.75}>
+            <Text style={styles.accionEmoji}>←</Text>
           </TouchableOpacity>
+          <View style={styles.topIconsLeft}>
+            {TOP_ICONS.map((ic) => (
+              <TouchableOpacity
+                key={ic.key}
+                style={[styles.topIconBtn, iconActivo === ic.key && styles.topIconBtnActivo]}
+                onPress={() => handleIconPress(ic.route, ic.key)}
+                activeOpacity={0.75}
+              >
+                <Text style={styles.topIconEmoji}>{ic.emoji}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
         <View style={styles.topLogos}>
           <View style={styles.logoBadge}>
             <Text style={styles.logoTexto}>IPN</Text>
           </View>
-          <View style={[styles.logoBadge, { backgroundColor: "#003366" }]}>
+          <View style={[styles.logoBadge, { backgroundColor: "#003366" }]}> 
             <Text style={styles.logoTexto}>ESCOM</Text>
           </View>
         </View>
@@ -182,21 +216,6 @@ export default function DetalleDepa() {
       <View style={styles.separador} />
 
       <ScrollView showsVerticalScrollIndicator={false}>
-
-        {/* ── Barra de acciones ── */}
-        <View style={styles.accionesBar}>
-          <TouchableOpacity style={styles.accionBtn} onPress={() => router.back()}>
-            <Text style={styles.accionEmoji}>←</Text>
-          </TouchableOpacity>
-          <View style={styles.accionesRight}>
-            <TouchableOpacity style={styles.accionBtn}>
-              <Text style={styles.accionEmoji}>⬆️</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.accionBtn}>
-              <Text style={styles.accionEmoji}>🔖</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
 
         {/* ── Imagen principal ── */}
         <View style={styles.imagenContainer}>
@@ -209,9 +228,6 @@ export default function DetalleDepa() {
             onPress={() => router.push(`/departamento/fotos?id=${depa.id}`)}
           >
             <Text style={styles.fotosBtnTexto}>Toca para ver más fotos</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.infoBtn}>
-            <Text style={styles.infoBtnTexto}>ℹ️</Text>
           </TouchableOpacity>
         </View>
 
@@ -226,8 +242,8 @@ export default function DetalleDepa() {
             <Text style={styles.vistasEmoji}>👁</Text>
           </View>
           <View style={styles.statsRow}>
-            <Text style={styles.statTexto}>50 Favoritos</Text>
-            <Text style={styles.statTexto}>1000 Vistas</Text>
+            <Text style={styles.statTexto}>{typeof (depa as any).favoritos_count !== 'undefined' ? `${(depa as any).favoritos_count} Favoritos` : '50 Favoritos'}</Text>
+            <Text style={styles.statTexto}>{(depa as any).vistas_mes ?? 1000} Vistas</Text>
           </View>
           <Text style={styles.descripcion}>
             {depa.descripcion ||
@@ -270,8 +286,7 @@ export default function DetalleDepa() {
         <View style={styles.seccion}>
           <View style={styles.seccionHeaderRow}>
             <Text style={styles.seccionTitulo}>Ubicación</Text>
-            <Text style={styles.vistasTexto}>👁 130</Text>
-          </View>
+                      </View>
           <Text style={styles.ubicacionDireccion}>{depa.colonia}, {depa.alcaldia}</Text>
           <Text style={styles.ubicacionDireccion}>{depa.direccion}</Text>
           <View style={styles.mapaContainer}>
@@ -316,7 +331,7 @@ export default function DetalleDepa() {
           <Text style={styles.seccionTitulo}>Calificación General:</Text>
           <View style={styles.calificacionRow}>
             <Estrellas calificacion={Math.round(calificacionPromedio)} size={28} />
-            <Text style={styles.calificacionNumero}>({OPINIONES_MOCK.length * 28})</Text>
+            <Text style={styles.calificacionNumero}>({OPINIONES_MOCK.length} opiniones)</Text>
           </View>
 
           <Text style={[styles.seccionTitulo, { marginTop: 20 }]}>Opiniones Y Sugerencias:</Text>
@@ -371,8 +386,9 @@ export default function DetalleDepa() {
                   <Text style={styles.verificadoTexto}>✓</Text>
                 </View>
               </View>
-              <Text style={styles.arrendadorNombre}>Nombre del{"\n"}arrendador</Text>
-              <Text style={styles.arrendadorInfo}>Información de</Text>
+              <Text style={styles.arrendadorNombre} numberOfLines={2}>
+                {arrendadorInfo ? `${arrendadorInfo.nombres || ''} ${arrendadorInfo.apellidos || ''}` : String((depa as any).arrendador) }
+              </Text>
             </View>
             <View style={styles.arrendadorDer}>
               <Text style={styles.arrendadorStat}>140 Evaluaciones</Text>
@@ -389,9 +405,34 @@ export default function DetalleDepa() {
               </View>
             </View>
           </View>
-          <TouchableOpacity style={styles.btnContactarArrendador}>
-            <Text style={styles.btnTexto}>Contactar al arrendador</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.btnContactarArrendador}
+              onPress={async () => {
+                if (!usuario) { router.push('/usuarios/login'); return; }
+                // Determinar id del arrendador
+                const arrId = arrendadorInfo?.id ?? (typeof (depa as any).arrendador === 'object' ? (depa as any).arrendador.id : Number((depa as any).arrendador));
+                if (arrId && usuario.id === arrId) {
+                  alert('Lo sentimos pero no es posible crear un chat para si mismo');
+                  return;
+                }
+                const busqueda = arrendadorInfo?.nombre_usuario || `${arrendadorInfo?.nombres || ''} ${arrendadorInfo?.apellidos || ''}` || String((depa as any).arrendador);
+                try {
+                  const res = await fetch(`${URL_BASE}/mensajes/${usuario.id}/chats/crear/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ busqueda }),
+                  });
+                  if (!res.ok) throw new Error('No se pudo crear chat');
+                  const chat = await res.json();
+                  // Navegar al chat creado
+                  router.push(`/mensajes/${chat.id}`);
+                } catch (e) {
+                  alert('Error al crear chat con el arrendador');
+                }
+              }}
+            >
+              <Text style={styles.btnTexto}>Contactar al arrendador</Text>
+            </TouchableOpacity>
         </View>
 
       </ScrollView>
@@ -433,6 +474,7 @@ const styles = StyleSheet.create({
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     paddingHorizontal: 16, paddingVertical: 10, backgroundColor: "#f7f4f0",
   },
+  topBarLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
   topIconsLeft: { flexDirection: "row", gap: 6 },
   topIconBtn: {
     width: 40, height: 40, borderRadius: 12, backgroundColor: "#fff",
@@ -587,7 +629,7 @@ const styles = StyleSheet.create({
   },
   arrendadorContactoBtnTexto: { fontSize: 18 },
   btnContactarArrendador: {
-    backgroundColor: "#e8e4de", borderRadius: 14, paddingVertical: 14, alignItems: "center",
+    backgroundColor: "#1a3a8f", borderRadius: 14, paddingVertical: 14, alignItems: "center",
   },
   btnSecundario: {
     flex: 1, backgroundColor: "#1a3a8f", borderRadius: 14,
