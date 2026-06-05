@@ -18,20 +18,28 @@ import * as ImagePicker from "expo-image-picker";
 import { useAuth } from "./../context/AuthContext";
 import { URL_BASE } from "./../../services/api";
 
-// ── Helper: convierte URI local a Blob (web) ──────────────────────
+// ── Helper: convierte URI local a Blob (solo web) ─────────────────
 async function uriABlob(uri: string): Promise<Blob> {
-  // Si ya es blob: lo fetchea directo
   if (uri.startsWith("blob:") || uri.startsWith("http")) {
     const r = await fetch(uri);
     return r.blob();
   }
-  // data:image/... → convierte base64 a Blob
   const [meta, base64] = uri.split(",");
   const mime = meta.split(":")[1].split(";")[0];
   const bytes = atob(base64);
   const arr = new Uint8Array(bytes.length);
   for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
   return new Blob([arr], { type: mime });
+}
+
+// ── Helper: prepara imagen según plataforma ───────────────────────
+// En web usa uriABlob (código original); en dispositivo físico usa
+// objeto directo { uri, name, type } que React Native entiende.
+async function prepararImagen(img: ImagenLocal): Promise<any> {
+  if (Platform.OS === "web") {
+    return await uriABlob(img.uri);
+  }
+  return { uri: img.uri, name: img.name, type: img.type };
 }
 
 // ── Tipos ─────────────────────────────────────────────────────────
@@ -91,7 +99,7 @@ const AMENIDADES: { key: keyof FormData; label: string; emoji: string }[] = [
   { key: "cocina",          label: "Cocina equipada",  emoji: "🍳" },
 ];
 
-const MAX_GALERIA = 9; // principal + 9 adicionales = 10 en total
+const MAX_GALERIA = 9;
 
 // ── Helpers imagen ────────────────────────────────────────────────
 function nombreArchivo(uri: string): string {
@@ -163,7 +171,6 @@ export default function NuevoDepartamento() {
   const [guardando, setGuardando] = useState(false);
   const [errores, setErrores]     = useState<Partial<Record<keyof FormData | "imagen_principal", string>>>({});
 
-  // ── Estado de imágenes ────────────────────────────────────────
   const [imagenPrincipal, setImagenPrincipal] = useState<ImagenLocal | null>(null);
   const [galeria, setGaleria]                 = useState<ImagenLocal[]>([]);
 
@@ -186,11 +193,10 @@ export default function NuevoDepartamento() {
     if (result.canceled) return;
     const asset = result.assets[0];
     setImagenPrincipal({
-      uri: asset.uri,
+      uri:  asset.uri,
       name: asset.fileName || `imagen_${Date.now()}.jpg`,
       type: asset.mimeType || "image/jpeg",
     });
-    // Limpiar error si existía
     setErrores(prev => ({ ...prev, imagen_principal: undefined }));
   };
 
@@ -267,13 +273,12 @@ export default function NuevoDepartamento() {
 
       // ── Imagen principal ──────────────────────────────────────
       if (imagenPrincipal) {
-        const blob = await uriABlob(imagenPrincipal.uri);
-        formData.append("imagen_principal", blob, imagenPrincipal.name);
+        const archivo = await prepararImagen(imagenPrincipal);
+        formData.append("imagen_principal", archivo, imagenPrincipal.name);
       }
 
       const r = await fetch(`${URL_BASE}/departamentos/`, {
         method: "POST",
-        // ⚠️ Sin Content-Type — el browser lo pone solo con el boundary correcto
         body: formData,
       });
 
@@ -290,8 +295,8 @@ export default function NuevoDepartamento() {
       // ── Galería ───────────────────────────────────────────────
       for (const img of galeria) {
         const fd = new FormData();
-        const blob = await uriABlob(img.uri);
-        fd.append("imagen", blob, img.name);
+        const archivo = await prepararImagen(img);
+        fd.append("imagen", archivo, img.name);
 
         const rg = await fetch(`${URL_BASE}/departamentos/${depaCreado.id}/galeria/`, {
           method: "POST",
@@ -440,7 +445,7 @@ export default function NuevoDepartamento() {
 
           {imagenPrincipal ? (
             <View style={styles.imagenPrincipalWrapper}>
-              <Image source={{ uri: imagenPrincipal.uri }} style={styles.imagenPrincipalPreview} resizeMode="cover"/>
+              <Image source={{ uri: imagenPrincipal.uri }} style={styles.imagenPrincipalPreview} resizeMode="cover" />
               <TouchableOpacity
                 style={styles.imagenPrincipalCambiar}
                 onPress={seleccionarPrincipal}
@@ -478,12 +483,11 @@ export default function NuevoDepartamento() {
             Agrega hasta {MAX_GALERIA} fotos más para mostrar tu departamento.
           </Text>
 
-          {/* Grid de miniaturas */}
           {galeria.length > 0 && (
             <View style={styles.galeriaGrid}>
               {galeria.map((img, i) => (
                 <View key={i} style={styles.galeriaThumbWrapper}>
-                  <Image source={{ uri: img.uri }} style={styles.galeriaThumb} resizeMode="cover"/>
+                  <Image source={{ uri: img.uri }} style={styles.galeriaThumb} resizeMode="cover" />
                   <TouchableOpacity
                     style={styles.galeriaThumbEliminar}
                     onPress={() => eliminarAdicional(i)}
@@ -495,7 +499,6 @@ export default function NuevoDepartamento() {
             </View>
           )}
 
-          {/* Botón agregar */}
           {galeria.length < MAX_GALERIA && (
             <TouchableOpacity style={styles.galeriaAgregarBtn} onPress={seleccionarAdicional}>
               <Text style={styles.galeriaAgregarIcono}>＋</Text>
@@ -587,7 +590,6 @@ const styles = StyleSheet.create({
   switchEmoji: { fontSize: 20, width: 32 },
   switchLabel: { flex: 1, fontSize: 14, color: "#333", fontWeight: "600" },
 
-  // Imagen principal
   imagenPrincipalBtn: {
     borderWidth: 2, borderColor: "#e0dcd8", borderStyle: "dashed",
     borderRadius: 14, paddingVertical: 28, alignItems: "center", gap: 6,
@@ -608,7 +610,6 @@ const styles = StyleSheet.create({
   },
   imagenPrincipalCambiarTexto: { fontSize: 13, fontWeight: "700", color: "#1a3a8f" },
 
-  // Galería
   galeriaHeader:  { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   galeriaConteo:  { fontSize: 13, fontWeight: "700", color: "#aaa" },
   galeriaGrid: {
