@@ -409,26 +409,32 @@ export default function DetalleDepa() {
               style={styles.btnContactarArrendador}
               onPress={async () => {
                 if (!usuario) { router.push('/usuarios/login'); return; }
-                // Determinar id del arrendador
-                const arrId = arrendadorInfo?.id ?? (typeof (depa as any).arrendador === 'object' ? (depa as any).arrendador.id : Number((depa as any).arrendador));
-                if (arrId && usuario.id === arrId) {
-                  alert('Lo sentimos pero no es posible crear un chat para si mismo');
+
+                const arrId = arrendadorInfo?.id 
+                  ?? (typeof (depa as any).arrendador === 'object' 
+                      ? (depa as any).arrendador.id 
+                      : Number((depa as any).arrendador));
+
+                if (!arrId) { alert('No se pudo identificar al arrendador'); return; }
+                
+                if (usuario.id === arrId) {
+                  alert('No es posible crear un chat para ti mismo');
                   return;
                 }
-                const busqueda = arrendadorInfo?.nombre_usuario || `${arrendadorInfo?.nombres || ''} ${arrendadorInfo?.apellidos || ''}` || String((depa as any).arrendador);
-                try {
-                  const res = await fetch(`${URL_BASE}/mensajes/${usuario.id}/chats/crear/`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ busqueda }),
-                  });
-                  if (!res.ok) throw new Error('No se pudo crear chat');
-                  const chat = await res.json();
-                  // Navegar al chat creado
-                  router.push(`/mensajes/${chat.id}`);
-                } catch (e) {
-                  alert('Error al crear chat con el arrendador');
-                }
+
+                const nombreArrendador = arrendadorInfo
+                  ? `${arrendadorInfo.nombres || ''} ${arrendadorInfo.apellidos || ''}`.trim()
+                  : String((depa as any).arrendador);
+
+                // Navegar directamente — [id].tsx creará el chat con otro_usuario_id
+                router.push({
+                  pathname: "/(tabs)/mensajes/[id]" as any,
+                  params: {
+                    id:     String(arrId),        // ← ID del arrendador, no del chat
+                    nombre: nombreArrendador,
+                    tipo:   "arrendador",
+                  },
+                });
               }}
             >
               <Text style={styles.btnTexto}>Contactar al arrendador</Text>

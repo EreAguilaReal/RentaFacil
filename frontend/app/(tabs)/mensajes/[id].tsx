@@ -28,7 +28,7 @@ function formatHora(iso: string) {
 
 export default function Conversacion() {
   const router  = useRouter();
-  const params  = useLocalSearchParams<{ id: string; nombre: string; tipo: string }>();
+  const params  = useLocalSearchParams<{ id: string; nombre: string; tipo: string ; nombre_usuario: string}>();
   const otroId  = params.id;       // ID del otro usuario
   const nombre  = params.nombre ?? "";
   const tipo    = params.tipo   ?? "";
@@ -41,20 +41,41 @@ export default function Conversacion() {
   const [enviando, setEnviando] = useState(false);
   const [error, setError]       = useState("");
   const flatRef                 = useRef<FlatList>(null);
+  const [nombreMostrado, setNombreMostrado] = useState(nombre);
+  const [tipoMostrado, setTipoMostrado]     = useState(tipo);
 
-  // ── Paso 1: crear o recuperar el chat ──────────────────────────
+  // Paso 1 completo:
   useEffect(() => {
-    if (!usuario || !nombre) return;
+    if (!usuario || !otroId) return;
+
+    const busqueda = params.nombre_usuario?.trim() || nombre.trim();
+
+    if (!busqueda) {
+      setError("No se pudo identificar al usuario.");
+      setCargando(false);
+      return;
+    }
 
     fetch(`${URL_BASE}/mensajes/${usuario.id}/chats/crear/`, {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ busqueda: nombre }),
+      body:    JSON.stringify({ busqueda }),
     })
-      .then(r => r.json())
-      .then(data => {
+      .then(async r => {
+        const data = await r.json();
+        if (!r.ok) {
+          setError("No se pudo abrir la conversación.");
+          setCargando(false);
+          return;
+        }
         if (data.id) {
           setChatId(data.id);
+          // Actualizar nombre desde la respuesta del servidor
+          if (data.otro_usuario) {
+            const n = `${data.otro_usuario.nombres ?? ""} ${data.otro_usuario.apellidos ?? ""}`.trim();
+            if (n) setNombreMostrado(n);
+            if (data.otro_usuario.tipo_usuario) setTipoMostrado(data.otro_usuario.tipo_usuario);
+          }
         } else {
           setError("No se pudo abrir la conversación.");
           setCargando(false);
@@ -64,7 +85,7 @@ export default function Conversacion() {
         setError("Error de conexión al abrir el chat.");
         setCargando(false);
       });
-  }, [usuario?.id, nombre]);
+  }, [usuario?.id, otroId]);
 
   // ── Paso 2: cargar mensajes una vez que tengamos chatId ─────────
   const cargarMensajes = useCallback(async () => {
@@ -158,15 +179,13 @@ export default function Conversacion() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Text style={styles.backTexto}>←</Text>
         </TouchableOpacity>
-        <View style={styles.headerAvatar}>
-          <Text style={styles.headerAvatarLetra}>
-            {nombre.charAt(0).toUpperCase()}
-          </Text>
-        </View>
-        <View style={styles.headerTextos}>
-          <Text style={styles.headerNombre} numberOfLines={1}>{nombre}</Text>
-          {tipoLabel ? <Text style={styles.headerTipo}>{tipoLabel}</Text> : null}
-        </View>
+        <Text style={styles.headerAvatarLetra}>
+          {nombreMostrado.charAt(0).toUpperCase()}
+        </Text>
+        <Text style={styles.headerNombre} numberOfLines={1}>{nombreMostrado}</Text>
+          {tipoMostrado 
+            ? <Text style={styles.headerTipo}>{TIPO_LABEL[tipoMostrado] ?? tipoMostrado}</Text> 
+            : null}
       </View>
       <View style={styles.separador} />
 

@@ -20,6 +20,7 @@ class DepartamentoSerializer(serializers.ModelSerializer):
     galeria          = ImagenDepartamentoSerializer(many=True, read_only=True)
     imagen_principal = serializers.ImageField(required=False, allow_null=True, use_url=True)
     inquilino_nombre = serializers.SerializerMethodField()
+    arrendador_nombre = serializers.SerializerMethodField()
 
     class Meta:
         model = Departamento
@@ -51,6 +52,7 @@ class DepartamentoSerializer(serializers.ModelSerializer):
             'fecha_creacion',
             'fecha_actualizacion',
             'inquilino_nombre',
+            'arrendador_nombre',
         ]
         read_only_fields = [
             'id',
@@ -63,6 +65,10 @@ class DepartamentoSerializer(serializers.ModelSerializer):
 
     def get_inquilino_nombre(self, obj):
         return str(obj.inquilino) if obj.inquilino else None
+    def get_arrendador_nombre(self, obj):
+        if obj.arrendador:
+            return f"{obj.arrendador.nombres} {obj.arrendador.apellidos}"
+        return ""
 
 class FavoritoSerializer(serializers.ModelSerializer):
     departamento    = DepartamentoSerializer(read_only=True)

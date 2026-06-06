@@ -325,9 +325,15 @@ function VistaArrendatario({ depas, cargando, router, citas, cargandoCitas }: {
               <TouchableOpacity
                 style={[styles.btnAccion, styles.btnPrimary]}
                 onPress={() => {
-                const nombre = encodeURIComponent(d.arrendador_nombre ??"Arrendador");
-                router.push(`/mensajes/${d.arrendador}?nombre=${nombre}&tipo=arrendador`);
-              }}
+                  router.push({
+                    pathname: "/(tabs)/mensajes/[id]" as any,
+                    params: {
+                      id:     String(d.arrendador),
+                      nombre: d.arrendador_nombre ?? "Arrendador",
+                      tipo:   "arrendador",
+                    },
+                  });
+                }}
               >
                 <Text style={styles.btnTextoBlanco}>📞 Contactar</Text>
               </TouchableOpacity>

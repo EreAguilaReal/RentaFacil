@@ -222,11 +222,11 @@ export default function Mensajes() {
                 router.push({
                   pathname: "/(tabs)/mensajes/[id]" as any,
                   params: {
-                    id:     item.id,
+                    id:     String(item.otro_usuario?.id ?? item.id), // ← ID del otro usuario
                     nombre: item.otro_usuario
                       ? `${item.otro_usuario.nombres} ${item.otro_usuario.apellidos}`
                       : "Chat",
-                    tipo:   item.otro_usuario?.tipo_usuario ?? "",  // ← y aquí
+                    tipo: item.otro_usuario?.tipo_usuario ?? "",
                   },
                 })
               }
