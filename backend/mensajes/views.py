@@ -53,10 +53,6 @@ def listar_chats(request, usuario_id):
 
 @api_view(['POST'])
 def crear_chat(request, usuario_id):
-    """
-    Crea un chat entre usuario_id y otro usuario buscado por nombre real o nombre_usuario.
-    Body: { "busqueda": "texto" }
-    """
     busqueda = request.data.get('busqueda', '').strip()
     if not busqueda:
         return Response({'error': 'Campo busqueda requerido'}, status=400)
@@ -66,17 +62,26 @@ def crear_chat(request, usuario_id):
     except Usuario.DoesNotExist:
         return Response({'error': 'Usuario no encontrado'}, status=404)
 
-    # Buscar por nombre_usuario exacto o por nombre/apellido (icontains)
-    otro = Usuario.objects.filter(
-        Q(nombre_usuario__iexact=busqueda) |
-        Q(nombres__icontains=busqueda) |
-        Q(apellidos__icontains=busqueda)
-    ).exclude(id=usuario_id).first()
+    # Buscar por nombre_usuario, nombre, apellido, o nombre completo
+    partes = busqueda.split()
+    candidatos = Usuario.objects.exclude(id=usuario_id)
+
+    otro = (
+        candidatos.filter(nombre_usuario__iexact=busqueda).first()
+        or candidatos.filter(nombres__icontains=busqueda).first()
+        or candidatos.filter(apellidos__icontains=busqueda).first()
+        or (
+            # nombre + apellido: "Rodrigo Balatrez"
+            candidatos.filter(
+                nombres__icontains=partes[0],
+                apellidos__icontains=' '.join(partes[1:])
+            ).first() if len(partes) > 1 else None
+        )
+    )
 
     if not otro:
         return Response({'error': 'No se encontró ningún usuario'}, status=404)
 
-    # Verificar si ya existe un chat entre ambos
     chat_existente = (
         Chat.objects
         .filter(participantes=usuario_actual)
@@ -86,11 +91,9 @@ def crear_chat(request, usuario_id):
     if chat_existente:
         return Response(_serializar_chat(chat_existente, usuario_id), status=200)
 
-    # Crear nuevo chat
     chat = Chat.objects.create()
     chat.participantes.add(usuario_actual, otro)
     return Response(_serializar_chat(chat, usuario_id), status=201)
-
 
 @api_view(['DELETE'])
 def eliminar_chat(request, usuario_id, chat_id):

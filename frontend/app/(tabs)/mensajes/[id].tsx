@@ -50,6 +50,13 @@ export default function Conversacion() {
 
     const busqueda = params.nombre_usuario?.trim() || nombre.trim();
 
+    // LOG TEMPORAL — borra después
+    console.log("=== CREAR CHAT ===");
+    console.log("usuario.id:", usuario.id);
+    console.log("otroId (otro usuario):", otroId);
+    console.log("busqueda:", busqueda);
+    console.log("URL:", `${URL_BASE}/mensajes/${usuario.id}/chats/crear/`);
+
     if (!busqueda) {
       setError("No se pudo identificar al usuario.");
       setCargando(false);
@@ -175,18 +182,25 @@ export default function Conversacion() {
       <StatusBar barStyle="dark-content" backgroundColor="#f7f4f0" />
 
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backTexto}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerAvatarLetra}>
-          {nombreMostrado.charAt(0).toUpperCase()}
-        </Text>
-        <Text style={styles.headerNombre} numberOfLines={1}>{nombreMostrado}</Text>
-          {tipoMostrado 
-            ? <Text style={styles.headerTipo}>{TIPO_LABEL[tipoMostrado] ?? tipoMostrado}</Text> 
-            : null}
-      </View>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <Text style={styles.backTexto}>←</Text>
+          </TouchableOpacity>
+
+          {/* Avatar con contenedor circular */}
+          <View style={styles.headerAvatar}>
+            <Text style={styles.headerAvatarLetra}>
+              {nombreMostrado.charAt(0).toUpperCase()}
+            </Text>
+          </View>
+
+          <View style={styles.headerTextos}>
+            <Text style={styles.headerNombre} numberOfLines={1}>{nombreMostrado}</Text>
+            {tipoMostrado
+              ? <Text style={styles.headerTipo}>{TIPO_LABEL[tipoMostrado] ?? tipoMostrado}</Text>
+              : null}
+          </View>
+        </View>
       <View style={styles.separador} />
 
       {/* Mensajes */}

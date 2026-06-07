@@ -1,3 +1,4 @@
+from django.db.models import Avg
 from rest_framework import viewsets
 from rest_framework import status
 from rest_framework.decorators import api_view, action
@@ -5,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from usuarios.models import Usuario
-from .models import Departamento, ImagenDepartamento, Favorito
+from .models import Departamento, ImagenDepartamento, Favorito, Calificacion, Reporte
 from .serializers import DepartamentoSerializer, ImagenDepartamentoSerializer, FavoritoSerializer
 
 
@@ -195,3 +196,133 @@ def ids_favoritos(request, usuario_id):
         "departamento_id", flat=True
     )
     return Response(list(ids))
+
+@api_view(['POST'])
+def crear_calificacion(request, depa_id):
+
+    arrendatario_id = request.data.get('arrendatario')
+    calificacion = request.data.get('calificacion')
+    comentario = request.data.get('comentario', '')
+    aspectos = request.data.get('aspectos_positivos', [])
+
+    if not arrendatario_id:
+        return Response(
+            {'error': 'arrendatario es requerido'},
+            status=400
+        )
+
+    if not calificacion:
+        return Response(
+            {'error': 'calificacion es requerida'},
+            status=400
+        )
+
+    try:
+        calificacion = int(calificacion)
+    except ValueError:
+        return Response(
+            {'error': 'calificacion inválida'},
+            status=400
+        )
+
+    if calificacion < 1 or calificacion > 5:
+        return Response(
+            {'error': 'La calificación debe estar entre 1 y 5'},
+            status=400
+        )
+
+    try:
+        departamento = Departamento.objects.get(
+            id=depa_id,
+            activo=True
+        )
+
+        arrendatario = Usuario.objects.get(
+            id=arrendatario_id
+        )
+
+    except Departamento.DoesNotExist:
+        return Response(
+            {'error': 'Departamento no encontrado'},
+            status=404
+        )
+
+    except Usuario.DoesNotExist:
+        return Response(
+            {'error': 'Usuario no encontrado'},
+            status=404
+        )
+
+    registro, creado = Calificacion.objects.update_or_create(
+        departamento=departamento,
+        arrendatario=arrendatario,
+        defaults={
+            'calificacion': calificacion,
+            'comentario': comentario,
+            'aspectos_positivos': aspectos
+        }
+    )
+
+    promedio = (
+        Calificacion.objects
+        .filter(departamento=departamento)
+        .aggregate(promedio=Avg('calificacion'))
+    )['promedio']
+
+    departamento.calificacion = round(promedio, 1)
+    departamento.save(update_fields=['calificacion'])
+
+    return Response({
+        'id': registro.id,
+        'calificacion': registro.calificacion,
+        'comentario': registro.comentario,
+        'aspectos_positivos': registro.aspectos_positivos,
+        'fecha': registro.fecha,
+        'creado': creado
+    })
+
+@api_view(['GET', 'POST'])
+def reportes_departamento(request, depa_id):
+
+    if request.method == 'POST':
+
+        arrendatario_id = request.data.get('arrendatario')
+        categoria = request.data.get('categoria')
+        descripcion = request.data.get('descripcion')
+
+        # lógica de creación
+        reporte = Reporte.objects.create(
+            departamento_id=depa_id,
+            arrendatario_id=arrendatario_id,
+            categoria=categoria,
+            descripcion=descripcion
+        )
+
+        return Response({
+            "id": reporte.id
+        }, status=201)
+
+    # GET
+    reportes = (
+        Reporte.objects
+        .filter(departamento_id=depa_id)
+        .select_related('arrendatario')
+        .order_by('-fecha')
+    )
+
+    data = [
+        {
+            "id": r.id,
+            "categoria": r.categoria,
+            "descripcion": r.descripcion,
+            "fecha": r.fecha,
+            "revisado": r.revisado,
+            "arrendatario": {
+                "id": r.arrendatario.id,
+                "nombre": r.arrendatario.nombres,
+            }
+        }
+        for r in reportes
+    ]
+
+    return Response(data)

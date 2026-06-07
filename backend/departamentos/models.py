@@ -125,3 +125,87 @@ class Favorito(models.Model):
 
     def __str__(self):
         return f"{self.usuario} → {self.departamento}"
+    
+class Calificacion(models.Model):
+
+    departamento = models.ForeignKey(
+        'Departamento',
+        on_delete=models.CASCADE,
+        related_name='calificaciones'
+    )
+
+    arrendatario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='calificaciones_realizadas'
+    )
+
+    calificacion = models.PositiveSmallIntegerField()
+
+    comentario = models.TextField(
+        blank=True,
+        null=True
+    )
+
+    aspectos_positivos = models.JSONField(
+        default=list,
+        blank=True
+    )
+
+    fecha = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    class Meta:
+        db_table = 'calificaciones'
+        unique_together = (
+            'departamento',
+            'arrendatario'
+        )
+
+    def __str__(self):
+        return f"{self.arrendatario} - {self.calificacion}★"
+    
+class Reporte(models.Model):
+
+    CATEGORIA_CHOICES = [
+        ('mantenimiento', 'Mantenimiento'),
+        ('ruido', 'Ruido excesivo'),
+        ('seguridad', 'Seguridad'),
+        ('limpieza', 'Limpieza'),
+        ('servicios', 'Servicios'),
+        ('otro', 'Otro'),
+    ]
+
+    departamento = models.ForeignKey(
+        'Departamento',
+        on_delete=models.CASCADE,
+        related_name='reportes'
+    )
+
+    arrendatario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='reportes_realizados'
+    )
+
+    categoria = models.CharField(
+        max_length=20,
+        choices=CATEGORIA_CHOICES
+    )
+
+    descripcion = models.TextField()
+
+    revisado = models.BooleanField(
+        default=False
+    )
+
+    fecha = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    class Meta:
+        db_table = 'reportes'
+
+    def __str__(self):
+        return f"{self.arrendatario} - {self.categoria}"

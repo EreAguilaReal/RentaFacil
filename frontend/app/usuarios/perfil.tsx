@@ -223,6 +223,17 @@ function VistaArrendador({ depas, cargando, router, verificado, onEliminar }: {
                     <Text style={styles.btnTextoBlanco}>🗑 Eliminar</Text>
                   </TouchableOpacity>
                 )}
+                <TouchableOpacity
+                  style={[styles.btnAccion, styles.btnPrimary]}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    router.push(`/departamento/${d.id}/reportes`);
+                  }}
+                >
+                  <Text style={styles.btnTextoBlanco}>
+                    📋 Reportes
+                  </Text>
+                </TouchableOpacity>
               </View>
             </TouchableOpacity>
           ))
