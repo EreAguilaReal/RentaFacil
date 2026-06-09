@@ -1,4 +1,4 @@
-from django.db.models import Avg
+from django.db.models import Avg, F
 from rest_framework import viewsets
 from rest_framework import status
 from rest_framework.decorators import api_view, action
@@ -197,89 +197,94 @@ def ids_favoritos(request, usuario_id):
     )
     return Response(list(ids))
 
-@api_view(['POST'])
-def crear_calificacion(request, depa_id):
+@api_view(['GET', 'POST'])
+def calificaciones_departamento(request, depa_id):
 
+    if request.method == 'GET':
+        cals = (
+            Calificacion.objects
+            .filter(departamento_id=depa_id)
+            .select_related('arrendatario')
+            .order_by('-fecha')
+        )
+        data = [
+            {
+                'id':                 c.id,
+                'calificacion':       c.calificacion,
+                'comentario':         c.comentario,
+                'aspectos_positivos': c.aspectos_positivos,
+                'fecha':              c.fecha,
+                'arrendatario': {
+                    'id':     c.arrendatario.id,
+                    'nombre': f"{c.arrendatario.nombres} {c.arrendatario.apellidos}".strip(),
+                },
+            }
+            for c in cals
+        ]
+        return Response(data)
+
+    # POST — lógica original sin cambios
     arrendatario_id = request.data.get('arrendatario')
-    calificacion = request.data.get('calificacion')
-    comentario = request.data.get('comentario', '')
-    aspectos = request.data.get('aspectos_positivos', [])
+    calificacion    = request.data.get('calificacion')
+    comentario      = request.data.get('comentario', '')
+    aspectos        = request.data.get('aspectos_positivos', [])
 
     if not arrendatario_id:
-        return Response(
-            {'error': 'arrendatario es requerido'},
-            status=400
-        )
-
+        return Response({'error': 'arrendatario es requerido'}, status=400)
     if not calificacion:
-        return Response(
-            {'error': 'calificacion es requerida'},
-            status=400
-        )
-
+        return Response({'error': 'calificacion es requerida'}, status=400)
     try:
         calificacion = int(calificacion)
     except ValueError:
-        return Response(
-            {'error': 'calificacion inválida'},
-            status=400
-        )
-
+        return Response({'error': 'calificacion inválida'}, status=400)
     if calificacion < 1 or calificacion > 5:
-        return Response(
-            {'error': 'La calificación debe estar entre 1 y 5'},
-            status=400
-        )
+        return Response({'error': 'La calificación debe estar entre 1 y 5'}, status=400)
 
     try:
-        departamento = Departamento.objects.get(
-            id=depa_id,
-            activo=True
-        )
-
-        arrendatario = Usuario.objects.get(
-            id=arrendatario_id
-        )
-
+        departamento = Departamento.objects.get(id=depa_id, activo=True)
+        arrendatario = Usuario.objects.get(id=arrendatario_id)
     except Departamento.DoesNotExist:
-        return Response(
-            {'error': 'Departamento no encontrado'},
-            status=404
-        )
-
+        return Response({'error': 'Departamento no encontrado'}, status=404)
     except Usuario.DoesNotExist:
-        return Response(
-            {'error': 'Usuario no encontrado'},
-            status=404
-        )
+        return Response({'error': 'Usuario no encontrado'}, status=404)
 
     registro, creado = Calificacion.objects.update_or_create(
         departamento=departamento,
         arrendatario=arrendatario,
         defaults={
-            'calificacion': calificacion,
-            'comentario': comentario,
-            'aspectos_positivos': aspectos
+            'calificacion':       calificacion,
+            'comentario':         comentario,
+            'aspectos_positivos': aspectos,
         }
     )
-
     promedio = (
         Calificacion.objects
         .filter(departamento=departamento)
         .aggregate(promedio=Avg('calificacion'))
     )['promedio']
-
     departamento.calificacion = round(promedio, 1)
     departamento.save(update_fields=['calificacion'])
 
     return Response({
-        'id': registro.id,
-        'calificacion': registro.calificacion,
-        'comentario': registro.comentario,
+        'id':                 registro.id,
+        'calificacion':       registro.calificacion,
+        'comentario':         registro.comentario,
         'aspectos_positivos': registro.aspectos_positivos,
-        'fecha': registro.fecha,
-        'creado': creado
+        'fecha':              registro.fecha,
+        'creado':             creado,
     })
+
+
+# ── NUEVA función de vistas ───────────────────────────────────────
+
+@api_view(['POST'])
+def registrar_vista(request, depa_id):
+    actualizado = Departamento.objects.filter(
+        id=depa_id, activo=True
+    ).update(vistas_mes=F('vistas_mes') + 1)
+    if not actualizado:
+        return Response({'error': 'Departamento no encontrado'}, status=404)
+    return Response({'ok': True})
 
 @api_view(['GET', 'POST'])
 def reportes_departamento(request, depa_id):
@@ -326,3 +331,28 @@ def reportes_departamento(request, depa_id):
     ]
 
     return Response(data)
+
+@api_view(['GET', 'POST'])
+def calificaciones_departamento(request, depa_id):
+    if request.method == 'GET':
+        cals = (
+            Calificacion.objects
+            .filter(departamento_id=depa_id)
+            .select_related('arrendatario')
+            .order_by('-fecha')
+        )
+        data = [
+            {
+                'id': c.id,
+                'calificacion': c.calificacion,
+                'comentario': c.comentario,
+                'aspectos_positivos': c.aspectos_positivos,
+                'fecha': c.fecha,
+                'arrendatario': {
+                    'id': c.arrendatario.id,
+                    'nombre': str(c.arrendatario),
+                },
+            }
+            for c in cals
+        ]
+        return Response(data)

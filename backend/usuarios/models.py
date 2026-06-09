@@ -61,6 +61,22 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     created_at = models.DateTimeField(auto_now_add=True)
 
     objects = UsuarioManager()
+    telefono = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True
+    )
+
+    whatsapp = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True
+    )
+
+    sitio_web = models.URLField(
+        blank=True,
+        null=True
+    )
 
     USERNAME_FIELD  = 'correo_electronico'   # campo usado para login
     REQUIRED_FIELDS = ['nombre_usuario', 'nombres', 'apellidos']

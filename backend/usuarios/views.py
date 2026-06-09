@@ -20,10 +20,21 @@ def puede_eliminar_usuario(usuario):
     return True
 
 
-@api_view(['GET', 'DELETE'])
+@api_view(['GET', 'DELETE', 'PATCH'])
 def obtener_usuario(request, id):
     try:
         usuario = Usuario.objects.get(id=id)
+        if request.method == 'PATCH':
+            for campo in ['nombres', 'apellidos', 'nombre_usuario',
+                        'fecha_nacimiento', 'genero', 'tipo_documento','telefono','whatsapp','sitio_web',]:
+                if campo in request.data:
+                    setattr(usuario, campo, request.data[campo])
+
+            usuario.save()
+            return Response(
+                {'mensaje': 'Datos actualizados correctamente'},
+                status=200
+            )
         if request.method == 'DELETE':
             if not puede_eliminar_usuario(usuario):
                 return Response(
@@ -56,6 +67,9 @@ def obtener_usuario(request, id):
             'tiene_citas': tiene_citas,
             'tiene_departamento_rentado': tiene_departamento_rentado,
             'puede_eliminar_cuenta': puede_eliminar,
+            'telefono': usuario.telefono,
+            'whatsapp': usuario.whatsapp,
+            'sitio_web': usuario.sitio_web,
         })
     except Usuario.DoesNotExist:
         return Response({'error': 'No encontrado'}, status=404)
@@ -164,13 +178,16 @@ def login_usuario(request):
     'documento_verificacion':  str(usuario.documento_verificacion) if usuario.documento_verificacion else None,
     'verificado': usuario.verificado,
     'estado_verificacion': usuario.estado_verificacion,
+    'telefono': usuario.telefono,
+    'whatsapp': usuario.whatsapp,
+    'sitio_web': usuario.sitio_web,
     }, status=status.HTTP_200_OK)
 
 @api_view(['PATCH'])
 def editar_usuario(request, id):
     try:
         usuario = Usuario.objects.get(id=id)
-        campos_editables = ['nombres', 'apellidos', 'nombre_usuario', 'fecha_nacimiento', 'genero', 'tipo_documento']
+        campos_editables = ['nombres', 'apellidos', 'nombre_usuario', 'fecha_nacimiento', 'genero', 'tipo_documento','telefono','whatsapp','sitio_web',]
         
         for campo in campos_editables:
             if campo in request.data:

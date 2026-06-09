@@ -30,6 +30,7 @@ export type Departamento = {
   imagen_principal?: string;
   galeria?: { id: number; imagen: string; orden: number }[];
   disponible: boolean;
+  rentado_hasta?: string | null;        // ← agregar
   tipo_renta?: 'solo_mujeres' | 'solo_hombres' | 'mixto';
   cuartos: number;
   amueblado?: boolean;
@@ -37,7 +38,31 @@ export type Departamento = {
   estacionamiento?: boolean;
   pet_friendly?: boolean;
   cocina?: boolean;
+  activo?: boolean;                    
+  arrendador?: number | {              
+    id: number;
+    nombres: string;
+    apellidos: string;
+  };
+  arrendador_nombre?: string;           
+  inquilino?: number | null;            
+  inquilino_nombre?: string | null;     
+  vistas_mes?: number;                  
+  calificacion?: number | null;         
+  favoritos_count?: number;             
+  fecha_creacion?: string;              
+  fecha_actualizacion?: string;         
 };
+
+export interface Usuario {
+  id: number;
+  nombres: string;
+  apellidos: string;
+
+  telefono?: string;
+  whatsapp?: string;
+  sitio_web?: string;
+}
 
 export async function obtenerFavoritos(usuarioId: number): Promise<any[]> {
   const r = await fetch(`${URL_BASE}/departamentos/favoritos/${usuarioId}/`);

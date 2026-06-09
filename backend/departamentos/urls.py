@@ -21,17 +21,17 @@ urlpatterns = [
 ]
 
 urlpatterns += [
-    path('departamentos/por-usuario/', dep_views.departamentos_por_usuario),
-    path("departamentos/favoritos/<int:usuario_id>/",          dep_views.listar_favoritos),
-    path("departamentos/favoritos/<int:usuario_id>/ids/",      dep_views.ids_favoritos),
-    path("departamentos/favoritos/<int:usuario_id>/agregar/",  dep_views.agregar_favorito),
-    path("departamentos/favoritos/<int:usuario_id>/<int:depa_id>/eliminar/", dep_views.eliminar_favorito),
-    path(
-        'departamentos/<int:depa_id>/calificaciones/',
-        dep_views.crear_calificacion
-    ),
-    path(
-    'departamentos/<int:depa_id>/reportes/',
-    dep_views.reportes_departamento
-),
+    path('departamentos/por-usuario/',                              dep_views.departamentos_por_usuario),
+    path('departamentos/favoritos/<int:usuario_id>/',               dep_views.listar_favoritos),
+    path('departamentos/favoritos/<int:usuario_id>/ids/',           dep_views.ids_favoritos),
+    path('departamentos/favoritos/<int:usuario_id>/agregar/',       dep_views.agregar_favorito),
+    path('departamentos/favoritos/<int:usuario_id>/<int:depa_id>/eliminar/', dep_views.eliminar_favorito),
+
+    # ← nombre corregido
+    path('departamentos/<int:depa_id>/calificaciones/', dep_views.calificaciones_departamento),
+
+    path('departamentos/<int:depa_id>/reportes/',       dep_views.reportes_departamento),
+
+    # ← ruta nueva
+    path('departamentos/<int:depa_id>/vista/',          dep_views.registrar_vista),
 ]
