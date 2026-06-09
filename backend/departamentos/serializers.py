@@ -49,6 +49,8 @@ class DepartamentoSerializer(serializers.ModelSerializer):
             'rentado_hasta',
             'vistas_mes',
             'calificacion',
+            'latitud', 
+            'longitud', 
             'fecha_creacion',
             'fecha_actualizacion',
             'inquilino_nombre',

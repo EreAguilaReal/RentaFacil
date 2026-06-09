@@ -247,6 +247,24 @@ export default function NuevoDepartamento() {
     return Object.keys(e).length === 0;
   };
 
+  // Convierte dirección a coordenadas usando Nominatim (OpenStreetMap, gratis)
+async function geocodificar(direccion: string, colonia: string, alcaldia: string) {
+  const query = encodeURIComponent(`${direccion}, ${colonia}, ${alcaldia}, Ciudad de México, México`);
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`,
+      { headers: { 'User-Agent': 'RentaFacil/1.0' } }
+    );
+    const data = await res.json();
+    if (data.length > 0) {
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    }
+  } catch (e) {
+    console.warn("Geocodificación fallida:", e);
+  }
+  return null; // Si falla, se guarda sin coordenadas
+}
+
   // ── Enviar ────────────────────────────────────────────────────
   const handleGuardar = async () => {
     if (!validar()) return;
@@ -269,6 +287,11 @@ export default function NuevoDepartamento() {
       formData.append("estacionamiento", String(form.estacionamiento));
       formData.append("pet_friendly",    String(form.pet_friendly));
       formData.append("cocina",          String(form.cocina));
+      const coords = await geocodificar(form.direccion, form.colonia, form.alcaldia);
+      if (coords) {
+        formData.append("latitud",  String(coords.lat));
+        formData.append("longitud", String(coords.lng));
+      }
       formData.append("arrendador",      String(usuario.id));
 
       // ── Imagen principal ──────────────────────────────────────

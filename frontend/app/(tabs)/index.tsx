@@ -18,36 +18,109 @@ import BusquedaBar from "../components/BusquedaBar";
 import ChipsFiltro from "../components/ChipsFiltro";
 import ModalFiltros from "../components/ModalFiltros";
 import { useAuth } from "../context/AuthContext";
+import { WebView } from 'react-native-webview';
 
 const { width } = Dimensions.get("window");
 
-// ── Mapa simulado ─────────────────────────────────────────────────
-const MapaSimulado = ({ depas }: { depas: Departamento[] }) => (
-  <View style={styles.mapaContainer}>
-    <Text style={styles.seccionTitulo}>📍 Mapa de departamentos</Text>
-    <View style={styles.mapaFondo}>
-      {depas.map((d, i) => (
-        <TouchableOpacity
-          key={d.id}
-          style={[
-            styles.mapaPin,
-            {
-              top: 30 + (i % 3) * 55,
-              left: 20 + (i * 70) % (width - 120),
-            },
-          ]}
-        >
-          <Text style={styles.mapaPinTexto}>
-            ${(d.precio / 1000).toFixed(1)}k
-          </Text>
-        </TouchableOpacity>
-      ))}
-      <Text style={styles.mapaNotaTexto}>
-        * Mapa ilustrativo — se conectará a Google Maps
-      </Text>
+// ── Mapa ─────────────────────────────────────────────────
+const MapaLeaflet = ({ depas }: { depas: Departamento[] }) => {
+  // Solo depas con coordenadas
+  const depasConCoords = depas.filter(d => d.latitud && d.longitud);
+
+  // Centro: promedio de coords, o GAM por defecto
+  const centro = depasConCoords.length > 0
+    ? {
+        lat: depasConCoords.reduce((s, d) => s + Number(d.latitud), 0) / depasConCoords.length,
+        lng: depasConCoords.reduce((s, d) => s + Number(d.longitud), 0) / depasConCoords.length,
+      }
+    : { lat: 19.4978, lng: -99.1269 }; // GAM, ESCOM
+
+  const marcadores = depasConCoords.map(d => ({
+    lat:    Number(d.latitud),
+    lng:    Number(d.longitud),
+    titulo: d.titulo,
+    precio: d.precio,
+    id:     d.id,
+  }));
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body, #map { width: 100%; height: 100%; }
+        .pin-label {
+          background: #e63946;
+          color: #fff;
+          font-weight: 800;
+          font-size: 12px;
+          padding: 4px 8px;
+          border-radius: 10px;
+          border: 2px solid #fff;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+          white-space: nowrap;
+        }
+      </style>
+    </head>
+    <body>
+      <div id="map"></div>
+      <script>
+        var map = L.map('map', { zoomControl: true }).setView(
+          [${centro.lat}, ${centro.lng}], 14
+        );
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap',
+          maxZoom: 19
+        }).addTo(map);
+
+        var marcadores = ${JSON.stringify(marcadores)};
+
+        marcadores.forEach(function(m) {
+          var icono = L.divIcon({
+            className: '',
+            html: '<div class="pin-label">$' + (m.precio/1000).toFixed(1) + 'k</div>',
+            iconAnchor: [20, 10],
+          });
+          L.marker([m.lat, m.lng], { icon: icono })
+            .addTo(map)
+            .bindPopup('<b>' + m.titulo + '</b><br>$' + m.precio.toLocaleString() + '/mes')
+            .on('click', function() {
+              window.ReactNativeWebView.postMessage(String(m.id));
+            });
+        });
+      </script>
+    </body>
+    </html>
+  `;
+
+  return (
+    <View style={styles.mapaContainer}>
+      <Text style={styles.seccionTitulo}>📍 Mapa de departamentos</Text>
+      <View style={styles.mapaFondo}>
+        {depasConCoords.length === 0 ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <Text style={{ color: '#999', fontSize: 13 }}>
+              Aún no hay departamentos con ubicación
+            </Text>
+          </View>
+        ) : (
+          <WebView
+            source={{ html }}
+            style={{ flex: 1, borderRadius: 18 }}
+            onMessage={(e) => router.push(`/departamento/${e.nativeEvent.data}` as any)}
+            scrollEnabled={false}
+            javaScriptEnabled
+          />
+        )}
+      </View>
     </View>
-  </View>
-);
+  );
+};
 
 // ── Tarjeta de departamento ───────────────────────────────────────
 const TarjetaDepa = ({ item }: { item: Departamento }) => {
@@ -355,7 +428,7 @@ export default function HomeScreen() {
         )}
 
         {/* Mapa simulado */}
-        <MapaSimulado depas={depas} />
+        <MapaLeaflet depas={depas} />
 
         {/* Ver todos */}
         <TouchableOpacity
