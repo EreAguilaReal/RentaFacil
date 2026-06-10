@@ -54,7 +54,7 @@ const MapaLeaflet = ({ depas }: { depas: Departamento[] }) => {
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body, #map { width: 100%; height: 100%; }
         .pin-label {
-          background: #e63946;
+          background: #ec1f1f;
           color: #fff;
           font-weight: 800;
           font-size: 12px;
@@ -63,6 +63,8 @@ const MapaLeaflet = ({ depas }: { depas: Departamento[] }) => {
           border: 2px solid #fff;
           box-shadow: 0 2px 6px rgba(0,0,0,0.3);
           white-space: nowrap;
+          min-width: 45px;
+          max-width: 180px;
         }
       </style>
     </head>
@@ -556,13 +558,14 @@ const styles = StyleSheet.create({
   },
   mapaPin: {
     position: "absolute",
-    backgroundColor: "#e63946",
+    backgroundColor: "#65d66e",
     borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 5,
     elevation: 4,
+    maxWidth: 200,
   },
-  mapaPinTexto: { color: "#fff", fontWeight: "800", fontSize: 12 },
+  mapaPinTexto: { color: "#ff0000", fontWeight: "800", fontSize: 12, flexWrap: "wrap", },
   mapaNotaTexto: {
     position: "absolute",
     bottom: 8,

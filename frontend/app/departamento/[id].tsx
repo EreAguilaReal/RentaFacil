@@ -22,6 +22,7 @@ import {
 } from "./../../services/api";
 import { useAuth } from "./../context/AuthContext";
 import { Linking } from "react-native";
+import { WebView } from "react-native-webview";
 
 const { width } = Dimensions.get("window");
 
@@ -149,7 +150,6 @@ export default function DetalleDepa() {
   const [calificaciones, setCalificaciones] = useState<Calificacion[]>([]);
   const [cargandoCals, setCargandoCals] = useState(false);
   const [opinionIndex, setOpinionIndex] = useState(0);
-
   // ── Efectos ────────────────────────────────────────────────────
 
   // 1. Departamento
@@ -268,7 +268,61 @@ export default function DetalleDepa() {
     );
   }
 
-  // ── Datos derivados ───────────────────────────────────────────
+  const lat = Number(depa.latitud);
+  const lng = Number(depa.longitud);
+  const htmlMapaDetalle = `
+  <!DOCTYPE html>
+  <html>
+  <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+
+  <style>
+  html, body, #map {
+    margin:0;
+    padding:0;
+    width:100%;
+    height:100%;
+  }
+  </style>
+  </head>
+
+  <body>
+
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+
+  const lat = ${lat};
+  const lng = ${lng};
+
+  const map = L.map('map').setView(
+    [lat, lng],
+    15
+  );
+
+  L.tileLayer(
+    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    {
+      maxZoom: 19
+    }
+  ).addTo(map);
+
+  L.marker([lat, lng])
+  .addTo(map)
+  .bindPopup('Departamento');
+
+  </script>
+
+  </body>
+  </html>
+  `;
 
   const amenidadesActivas = AMENIDADES.filter((a) => (depa as any)[a.key]);
   const amenidadesMostradas = mostrarTodas
@@ -524,27 +578,48 @@ export default function DetalleDepa() {
         </View>
 
         {/* ══ Ubicación ══ */}
-        <View style={styles.seccion}>
-          <Text style={styles.seccionTitulo}>Ubicación</Text>
-          <Text style={styles.ubicacionDireccion}>
-            {depa.colonia}, {depa.alcaldia}
-          </Text>
-          <Text style={styles.ubicacionDireccion}>{depa.direccion}</Text>
-          <View style={styles.mapaContainer}>
-            <View style={styles.mapaFondo}>
-              <Text style={styles.mapaNota}>
-                🗺 Mapa — se conectará a Google Maps
-              </Text>
-              <View style={styles.mapaPin}>
-                <Text style={styles.mapaPinTexto}>📍</Text>
+        <View style={styles.mapaContainer}>
+          <View style={styles.mapaFondo}>
+            {depa.latitud && depa.longitud ? (
+              <WebView
+                source={{ html: htmlMapaDetalle }}
+                style={{ flex: 1 }}
+                javaScriptEnabled
+                domStorageEnabled
+                mixedContentMode="always"
+                originWhitelist={["*"]}
+                onMessage={(e) => {
+                }}
+              />
+            ) : (
+              <View
+                style={{
+                  flex: 1,
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: "#777" }}>
+                  Este departamento no tiene ubicación registrada
+                </Text>
               </View>
-            </View>
-            <TouchableOpacity style={styles.mapaRutasBtn}>
+            )}
+          </View>
+
+          {depa.latitud && depa.longitud && (
+            <TouchableOpacity
+              style={styles.mapaRutasBtn}
+              onPress={() =>
+                Linking.openURL(
+                  `https://www.google.com/maps/dir/?api=1&destination=${depa.latitud},${depa.longitud}`
+                )
+              }
+            >
               <Text style={styles.mapaRutasBtnTexto}>
-                Toca para generar rutas
+                Generar ruta en Google Maps
               </Text>
             </TouchableOpacity>
-          </View>
+          )}
         </View>
 
         {/* ══ Información de contacto ══ */}
@@ -1030,14 +1105,13 @@ const styles = StyleSheet.create({
   ubicacionDireccion: { fontSize: 14, color: "#555", marginBottom: 4 },
   mapaContainer: { marginTop: 12, borderRadius: 16, overflow: "hidden" },
   mapaFondo: {
-    height: 180,
-    backgroundColor: "#d4e8c2",
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
+    height: 260,
+    width: "100%",
+    backgroundColor: "#ddecee",
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: "#b5d49a",
-    position: "relative",
+    borderColor: "#c9c9c9",
+    overflow: "hidden",
   },
   mapaNota: { fontSize: 13, color: "#555", fontWeight: "600" },
   mapaPin: { position: "absolute", bottom: 40 },

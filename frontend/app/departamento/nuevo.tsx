@@ -17,6 +17,7 @@ import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { useAuth } from "./../context/AuthContext";
 import { URL_BASE } from "./../../services/api";
+import MapaSelector from "../components/MapaSelector";
 
 // ── Helper: convierte URI local a Blob (solo web) ─────────────────
 async function uriABlob(uri: string): Promise<Blob> {
@@ -170,6 +171,9 @@ export default function NuevoDepartamento() {
   const [form, setForm]           = useState<FormData>(FORM_INICIAL);
   const [guardando, setGuardando] = useState(false);
   const [errores, setErrores]     = useState<Partial<Record<keyof FormData | "imagen_principal", string>>>({});
+  
+  const [latitud, setLatitud] = useState<number | null>(null);
+  const [longitud, setLongitud] = useState<number | null>(null);
 
   const [imagenPrincipal, setImagenPrincipal] = useState<ImagenLocal | null>(null);
   const [galeria, setGaleria]                 = useState<ImagenLocal[]>([]);
@@ -243,27 +247,16 @@ export default function NuevoDepartamento() {
     else if (isNaN(Number(form.cuartos)) || Number(form.cuartos) < 1)
                                 e.cuartos   = "Mínimo 1 cuarto";
     if (!imagenPrincipal)       e.imagen_principal = "La imagen principal es obligatoria";
+    if (latitud === null || longitud === null) {
+      Alert.alert(
+        "Ubicación requerida",
+        "Selecciona la ubicación del departamento en el mapa."
+      );
+      return false;
+    }
     setErrores(e);
     return Object.keys(e).length === 0;
   };
-
-  // Convierte dirección a coordenadas usando Nominatim (OpenStreetMap, gratis)
-async function geocodificar(direccion: string, colonia: string, alcaldia: string) {
-  const query = encodeURIComponent(`${direccion}, ${colonia}, ${alcaldia}, Ciudad de México, México`);
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`,
-      { headers: { 'User-Agent': 'RentaFacil/1.0' } }
-    );
-    const data = await res.json();
-    if (data.length > 0) {
-      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-    }
-  } catch (e) {
-    console.warn("Geocodificación fallida:", e);
-  }
-  return null; // Si falla, se guarda sin coordenadas
-}
 
   // ── Enviar ────────────────────────────────────────────────────
   const handleGuardar = async () => {
@@ -287,10 +280,16 @@ async function geocodificar(direccion: string, colonia: string, alcaldia: string
       formData.append("estacionamiento", String(form.estacionamiento));
       formData.append("pet_friendly",    String(form.pet_friendly));
       formData.append("cocina",          String(form.cocina));
-      const coords = await geocodificar(form.direccion, form.colonia, form.alcaldia);
-      if (coords) {
-        formData.append("latitud",  String(coords.lat));
-        formData.append("longitud", String(coords.lng));
+      if (latitud !== null && longitud !== null) {
+        formData.append(
+          "latitud",
+          Number(latitud).toFixed(6)
+        );
+
+        formData.append(
+          "longitud",
+          Number(longitud).toFixed(6)
+        );
       }
       formData.append("arrendador",      String(usuario.id));
 
@@ -424,6 +423,34 @@ async function geocodificar(direccion: string, colonia: string, alcaldia: string
           <Campo label="Dirección completa *" value={form.direccion}     onChange={set("direccion")}     placeholder="Calle, número, referencias" />
           {errores.direccion && <Text style={styles.error}>{errores.direccion}</Text>}
           <Campo label="Metro más cercano"    value={form.metro_cercano} onChange={set("metro_cercano")} placeholder="Ej. Politécnico" />
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: "700",
+              color: "#555",
+              marginBottom: 8,
+              marginTop: 10,
+            }}
+          >
+            Seleccionar ubicación en mapa
+          </Text>
+
+          <MapaSelector
+            latitud={latitud ?? undefined}
+            longitud={longitud ?? undefined}
+            onLocationSelected={(lat, lng, direccion) => {
+              console.log(lat, lng, direccion);
+              setLatitud(lat);
+              setLongitud(lng);
+
+              setForm(prev => ({
+                ...prev,
+                direccion: direccion?.direccion ?? "",
+                colonia: direccion?.colonia ?? "",
+                alcaldia: direccion?.alcaldia ?? "",
+              }));
+            }}
+          />
         </View>
 
         {/* ── Tipo de renta ── */}

@@ -55,6 +55,12 @@ class DepartamentoSerializer(serializers.ModelSerializer):
             'fecha_actualizacion',
             'inquilino_nombre',
             'arrendador_nombre',
+            "direccion",
+            "colonia",
+            "alcaldia",
+
+            "latitud",
+            "longitud",
         ]
         read_only_fields = [
             'id',

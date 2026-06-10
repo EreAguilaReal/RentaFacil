@@ -289,6 +289,8 @@ npx expo install @react-native-async-storage/async-storage   # Estado del login
 npx expo install @react-native-community/datetimepicker      # Selector de fecha
 npx expo install expo-document-picker                         # Subir archivos
 npx expo install expo-image-picker                            # Subir imágenes
+npx expo install react-native-webview                         # Web View
+npx expo install expo-location                              # Localización
 ```
 
 > ⚠️ Recuerda copiar `api-example.ts` como `api.ts` y llenar `.env` con tus datos antes de iniciar.
