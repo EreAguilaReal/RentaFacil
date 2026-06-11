@@ -331,28 +331,3 @@ def reportes_departamento(request, depa_id):
     ]
 
     return Response(data)
-
-@api_view(['GET', 'POST'])
-def calificaciones_departamento(request, depa_id):
-    if request.method == 'GET':
-        cals = (
-            Calificacion.objects
-            .filter(departamento_id=depa_id)
-            .select_related('arrendatario')
-            .order_by('-fecha')
-        )
-        data = [
-            {
-                'id': c.id,
-                'calificacion': c.calificacion,
-                'comentario': c.comentario,
-                'aspectos_positivos': c.aspectos_positivos,
-                'fecha': c.fecha,
-                'arrendatario': {
-                    'id': c.arrendatario.id,
-                    'nombre': str(c.arrendatario),
-                },
-            }
-            for c in cals
-        ]
-        return Response(data)
