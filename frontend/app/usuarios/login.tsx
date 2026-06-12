@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Linking } from "react-native";
+import { Linking, Image } from "react-native";
 
 // ── Tipos ─────────────────────────────────────────────────────────
 type Errores = { correo?: string; password?: string };
@@ -146,9 +146,12 @@ export default function Login() {
         >
           {/* ── Encabezado ── */}
           <View style={cs.encabezado}>
-            <View style={cs.avatarCirculo}>
-              <Text style={cs.avatarEmoji}>🏠</Text>
-            </View>
+            <Image
+              source={require("../assets/logoRentaFacil.png")}
+              style={cs.logo}
+              resizeMode="contain"
+            />
+
             <Text style={cs.titulo}>Bienvenido</Text>
             <Text style={cs.subtitulo}>Inicia sesión para continuar</Text>
           </View>
@@ -276,4 +279,10 @@ const cs = StyleSheet.create({
   crearCuentaRow:   { flexDirection: "row", justifyContent: "center" },
   crearCuentaTexto: { fontSize: 14, color: "#888" },
   crearCuentaLink:  { fontSize: 14, color: "#1a3a8f", fontWeight: "800" },
+  logo: {
+    width: 180,
+    height: 180,
+    marginBottom: 16,
+    alignSelf: "center",
+  },
 });

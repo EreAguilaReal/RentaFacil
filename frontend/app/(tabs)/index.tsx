@@ -276,6 +276,9 @@ export default function HomeScreen() {
 
     {/* ── Top Bar ── */}
       <View style={styles.topBar}>
+        <View style={styles.topLeft}>
+          <Text style={styles.texto}>RentaFácil💙</Text>
+        </View>
         <View style={styles.topLogos}>
           <TouchableOpacity onPress={() => Linking.openURL("https://www.ipn.mx")}>
             <View style={styles.logoBadge}>
@@ -634,12 +637,16 @@ const styles = StyleSheet.create({
 
   topBar: {
     flexDirection: "row",
-    justifyContent: "flex-end",
+    justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 10,
     backgroundColor: "#f7f4f0",
   },
+  topLeft: {
+    justifyContent: "center",
+  },
+  texto: { color: "#000000", fontWeight: "800", fontSize: 20, letterSpacing: 0.5 },
   topLogos:  { flexDirection: "row", gap: 6, alignItems: "center" },
   logoBadge: {
     backgroundColor: "#8B0000",
