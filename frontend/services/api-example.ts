@@ -2,8 +2,11 @@ import { Platform } from 'react-native';
 
 export const URL_BASE = Platform.OS === 'web'
   ? 'http://localhost:8000/api'
-  : 'http://IP-LOCAL:8000/api';
-  
+  : 'http://IP-LOCAL/api';
+
+export const MEDIA_BASE = Platform.OS === 'web'
+? 'http://localhost:8000/'
+: 'http://IP-LOCAL:8000/';
 
 export async function obtenerDepartamentos(filtros: Record<string, string> = {}) {
   const params = new URLSearchParams(filtros).toString();
