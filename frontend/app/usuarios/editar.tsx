@@ -171,7 +171,7 @@ export default function Editar() {
 
       {/* ── Top Bar ── */}
       <View style={cs.topBar}>
-        <TouchableOpacity style={cs.accionBtn} onPress={() => router.push("/usuarios/perfil")}>
+        <TouchableOpacity style={cs.accionBtn} onPress={() => router.back()}>
           <Text style={cs.accionEmoji}>←</Text>
         </TouchableOpacity>
       </View>

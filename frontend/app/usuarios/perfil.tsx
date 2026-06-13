@@ -15,13 +15,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as DocumentPicker from "expo-document-picker";
-import { URL_BASE } from "../../services/api";
+import { URL_BASE, MEDIA_BASE } from "../../services/api";
 import { useFocusEffect } from "expo-router";
 import { useCallback } from "react";
-
-const MEDIA_BASE = Platform.OS === "web"
-  ? "http://localhost:8000/"
-  : "http://192.168.1.84:8000/";
 
 const GENERO_LABEL: Record<string, string> = {
   M: "Masculino", F: "Femenino", O: "Otro", P: "Prefiero no decirlo",

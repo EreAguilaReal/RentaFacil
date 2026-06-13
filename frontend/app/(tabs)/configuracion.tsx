@@ -263,18 +263,20 @@ export default function Configuracion() {
             onPress={() => Linking.openURL("https://www.escom.ipn.mx")}
           />
           <View style={styles.separadorFila} />
+          {/* ✅ ACTUALIZADO: navega a la pantalla de términos */}
           <FilaAjuste
             emoji="📋"
             label="Términos y condiciones"
             descripcion="Consulta nuestros términos de uso"
-            onPress={() => {}}
+            onPress={() => router.push("/legal/terminos")}
           />
           <View style={styles.separadorFila} />
+          {/* ✅ ACTUALIZADO: navega a la pantalla de privacidad */}
           <FilaAjuste
             emoji="🔏"
             label="Política de privacidad"
             descripcion="Cómo manejamos tus datos"
-            onPress={() => {}}
+            onPress={() => router.push("/legal/privacidad")}
           />
           <View style={styles.separadorFila} />
           <View style={styles.fila}>
@@ -310,7 +312,7 @@ export default function Configuracion() {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerTexto}>RentaFácil © 2025 · IPN ESCOM</Text>
+          <Text style={styles.footerTexto}>RentaFácil © 2026 · IPN ESCOM</Text>
         </View>
 
       </ScrollView>
