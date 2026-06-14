@@ -64,7 +64,7 @@ const TOP_ICONS = [
 
 const AMENIDADES = [
   { key: "amueblado",       label: "Amueblado",       emoji: "🛋" },
-  { key: "internet",        label: "Internet",         emoji: "📶" },
+  { key: "internet",        label: "Internet",         emoji: "🛜" },
   { key: "estacionamiento", label: "Estacionamiento",  emoji: "🚗" },
   { key: "pet_friendly",    label: "Pet friendly",     emoji: "🐾" },
   { key: "cocina",          label: "Cocina",           emoji: "🍳" },
@@ -226,21 +226,6 @@ export default function DetalleDepa() {
   const handleIconPress = (route: string, key: string) => {
     setIconActivo(key);
     router.push(route as any);
-  };
-
-  const handleApartar = () => {
-    const arrId =
-      arrendadorInfo?.id ??
-      (typeof (depa as any).arrendador === "object"
-        ? (depa as any).arrendador.id
-        : Number((depa as any).arrendador));
-
-    if (usuario && arrId && usuario.id === arrId) {
-      alert("Lo sentimos pero no es posible apartar tu propio departamento");
-      return;
-    }
-    if (!depa?.disponible) setModalOcupado(true);
-    else alert("¡Departamento apartado!");
   };
 
   // ── Estado de carga / error ────────────────────────────────────
@@ -568,12 +553,6 @@ export default function DetalleDepa() {
                 </Text>
               </TouchableOpacity>
             )}
-            <TouchableOpacity
-              style={styles.btnPrimario}
-              onPress={handleApartar}
-            >
-              <Text style={styles.btnTexto}>Apartar ahora</Text>
-            </TouchableOpacity>
           </View>
         </View>
 

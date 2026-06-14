@@ -13,14 +13,14 @@ interface Chip {
 }
 
 const CHIPS_DEFAULT: Chip[] = [
-  { key: "solo_mujeres",    label: "👩 Solo mujeres" },
-  { key: "solo_hombres",    label: "👨 Solo hombres" }, 
-  { key: "mixto",           label: "👥 Mixto" },      
-  { key: "internet",        label: "📶 Internet" },
-  { key: "estacionamiento", label: "🚗 Estacionamiento" },
-  { key: "amueblado",       label: "🛋 Amueblado" },
-  { key: "cocina",          label: "🍳 Cocina" },
-  { key: "pet_friendly",    label: "🐾 Pet friendly" },
+  { key: "solo_mujeres",    label: "Solo mujeres" },
+  { key: "solo_hombres",    label: "Solo hombres" }, 
+  { key: "mixto",           label: "Mixto" },      
+  { key: "internet",        label: "Internet" },
+  { key: "estacionamiento", label: "Estacionamiento" },
+  { key: "amueblado",       label: "Amueblado" },
+  { key: "cocina",          label: "Cocina" },
+  { key: "pet_friendly",    label: "Pet friendly" },
 ];
 
 interface ChipsFiltroProps {
@@ -57,7 +57,7 @@ export default function ChipsFiltro({ chips = CHIPS_DEFAULT }: ChipsFiltroProps)
 }
 
 const styles = StyleSheet.create({
-  scroll: { marginTop: 10, minHeight: 30, maxHeight: 30},
+  scroll: { marginTop: 10},
   content: { paddingHorizontal: 20, gap: 8 , alignItems: "center"},
   chip: {
     alignItems: "center",
@@ -65,9 +65,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 15,
     paddingHorizontal: 14,
+    paddingVertical: 6,
     borderWidth: 1.5,
     borderColor: "#e0dcd8",
-    height: 30,
   },
   chipActivo: {
     backgroundColor: "#e63946",

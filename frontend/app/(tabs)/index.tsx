@@ -233,7 +233,7 @@ const TarjetaDepa = ({ item }: { item: Departamento }) => {
               <Text style={styles.iconoSmall}>🛋</Text>
             )}
             {item.internet && (
-              <Text style={styles.iconoSmall}>📶</Text>
+              <Text style={styles.iconoSmall}>🛜</Text>
             )}
             {item.estacionamiento && (
               <Text style={styles.iconoSmall}>🚗</Text>

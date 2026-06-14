@@ -121,7 +121,7 @@ const TarjetaFav = ({
           <Text style={styles.precio}>${d.precio.toLocaleString()}/mes</Text>
           <View style={styles.iconosRow}>
             {d.amueblado        && <Text style={styles.icono}>🛋</Text>}
-            {d.internet         && <Text style={styles.icono}>📶</Text>}
+            {d.internet         && <Text style={styles.icono}>🛜</Text>}
             {d.estacionamiento  && <Text style={styles.icono}>🚗</Text>}
           </View>
         </View>

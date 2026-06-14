@@ -94,7 +94,7 @@ const TIPOS_RENTA: { value: TipoRenta; label: string; emoji: string }[] = [
 
 const AMENIDADES: { key: keyof FormData; label: string; emoji: string }[] = [
   { key: "amueblado",       label: "Amueblado",       emoji: "🛋" },
-  { key: "internet",        label: "Internet",         emoji: "📶" },
+  { key: "internet",        label: "Internet",         emoji: "🛜" },
   { key: "estacionamiento", label: "Estacionamiento",  emoji: "🚗" },
   { key: "pet_friendly",    label: "Pet friendly",     emoji: "🐾" },
   { key: "cocina",          label: "Cocina equipada",  emoji: "🍳" },

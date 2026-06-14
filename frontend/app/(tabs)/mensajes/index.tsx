@@ -154,9 +154,10 @@ export default function Mensajes() {
       router.push({
         pathname: "/(tabs)/mensajes/[id]" as any,
         params: {
-          id:     data.id,
-          nombre: `${data.otro_usuario?.nombres ?? ""} ${data.otro_usuario?.apellidos ?? ""}`.trim(),
-          tipo:   data.otro_usuario?.tipo_usuario ?? "",  // ← verificar que esté aquí
+          id:             data.id,
+          nombre:         `${data.otro_usuario?.nombres ?? ""} ${data.otro_usuario?.apellidos ?? ""}`.trim(),
+          tipo:           data.otro_usuario?.tipo_usuario ?? "",
+          nombre_usuario: data.otro_usuario?.nombre_usuario ?? "",
         },
       });
     } catch {
@@ -222,11 +223,12 @@ export default function Mensajes() {
                 router.push({
                   pathname: "/(tabs)/mensajes/[id]" as any,
                   params: {
-                    id:     String(item.otro_usuario?.id ?? item.id), // ← ID del otro usuario
+                    id:     String(item.otro_usuario?.id ?? item.id),
                     nombre: item.otro_usuario
                       ? `${item.otro_usuario.nombres} ${item.otro_usuario.apellidos}`
                       : "Chat",
                     tipo: item.otro_usuario?.tipo_usuario ?? "",
+                    nombre_usuario: item.otro_usuario?.nombre_usuario ?? "",
                   },
                 })
               }

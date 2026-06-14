@@ -216,7 +216,7 @@ function VistaArrendador({ depas, cargando, router, verificado, onEliminar }: {
                       setConfirmarId(d.id);
                     }}
                   >
-                    <Text style={styles.btnTextoBlanco}>🗑 Eliminar</Text>
+                    <Text style={styles.btnTextoBlanco}>Eliminar</Text>
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity
@@ -226,9 +226,7 @@ function VistaArrendador({ depas, cargando, router, verificado, onEliminar }: {
                     router.push(`/departamento/${d.id}/reportes`);
                   }}
                 >
-                  <Text style={styles.btnTextoBlanco}>
-                    📋 Reportes
-                  </Text>
+                  <Text style={styles.btnTextoBlanco}>Reportes</Text>
                 </TouchableOpacity>
               </View>
             </TouchableOpacity>
@@ -321,13 +319,13 @@ function VistaArrendatario({ depas, cargando, router, citas, cargandoCitas }: {
                 style={[styles.btnAccion, styles.btnDanger]}
                 onPress={() => router.push(`/departamento/reporte-depa?id=${d.id}`)}
               >
-                <Text style={styles.btnTextoBlanco}>⚠ Reportar</Text>
+                <Text style={styles.btnTextoBlanco}>Reportar</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.btnAccion}
                 onPress={() => router.push(`/departamento/calificar-depa?id=${d.id}`)}
               >
-                <Text style={styles.btnTextoOscuro}>★ Calificar</Text>
+                <Text style={styles.btnTextoOscuro}>Calificar</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.btnAccion, styles.btnPrimary]}
@@ -342,7 +340,7 @@ function VistaArrendatario({ depas, cargando, router, citas, cargandoCitas }: {
                   });
                 }}
               >
-                <Text style={styles.btnTextoBlanco}>📞 Contactar</Text>
+                <Text style={styles.btnTextoBlanco}>Contactar</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -792,7 +790,7 @@ export default function Perfil() {
                   style={[styles.docBtn, { backgroundColor: "#e63946", marginTop: 8 }]}
                   onPress={handleEliminarDocumento}
                 >
-                  <Text style={styles.docBtnTexto}>🗑 Eliminar y subir nuevo</Text>
+                  <Text style={styles.docBtnTexto}>Eliminar y subir nuevo</Text>
                 </TouchableOpacity>
               </View>
             )}
