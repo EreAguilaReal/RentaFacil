@@ -21,7 +21,7 @@ const TIPOS_RENTA = [
 const CARACTERISTICAS = [
   { key: "amueblado",       label: "🛋 Amueblado" },
   { key: "pet_friendly",    label: "🐾 Pet friendly" },
-  { key: "internet",        label: "📶 Internet incluido" },
+  { key: "internet",        label: "🛜 Internet incluido" },
   { key: "estacionamiento", label: "🚗 Estacionamiento" },
   { key: "cocina",          label: "🍳 Cocina" },
 ];
