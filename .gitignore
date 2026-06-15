@@ -1,0 +1,18 @@
+# Ignorar archivos temporales
+*.tmp
+*.log
+
+# Ignorar carpeta node_modules
+node_modules/
+
+# Ignorar archivos de configuración local
+.env
+
+# Ignorar carpeta build
+build/
+
+# Ignorar API URL
+frontend/services/api.ts
+
+# Ignorar settings.py
+backend/config/settings.py

@@ -1,28 +1,44 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
+import { Redirect, Tabs } from "expo-router";
+import { Text } from "react-native";
+import { useAuth } from "../context/AuthContext";
+import { FiltrosProvider } from "../context/FiltrosContext";
 
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+export default function TabsLayout() {
+  const { estaAutenticado, cargando } = useAuth();
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  if (cargando) return null;
+
+  if (!estaAutenticado) {
+    return <Redirect href="/usuarios/login" />;
+  }
 
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+    <FiltrosProvider>
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarStyle: {
+            backgroundColor: "#fff",
+            borderTopColor: "#f0ece8",
+            borderTopWidth: 1,
+            height: 60,
+            paddingTop: 6,
+          },
+          tabBarActiveTintColor: "#e63946",
+          tabBarInactiveTintColor: "#aaa",
+          tabBarLabelStyle: {
+            fontSize: 11,
+            fontWeight: "600",
+          },
         }}
-      />
-    </Tabs>
+      >
+        <Tabs.Screen name="index" options={{ title: "Inicio", tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>🏠</Text> }} />
+        <Tabs.Screen name="favoritos" options={{ title: "Favoritos", tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>❤️</Text> }} />
+        <Tabs.Screen name="mensajes/index" options={{ title: "Mensajes", tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>💬</Text> }} />
+        <Tabs.Screen name="mensajes/[id]" options={{ href: null }} />
+        <Tabs.Screen name="configuracion" options={{ title: "Configuracion", tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>⚙️</Text> }} />
+        <Tabs.Screen name="search" options={{ href: null }} />
+      </Tabs>
+    </FiltrosProvider>
   );
 }

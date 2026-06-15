@@ -1,324 +1,447 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Dimensions,
   FlatList,
   Image,
-  Modal,
+  Linking,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { obtenerDepartamentos } from '../../services/api';
+import { router } from "expo-router";
+import { obtenerDepartamentos, Departamento } from "../../services/api";
+import { useFiltros } from "../context/FiltrosContext";
+import BusquedaBar from "../components/BusquedaBar";
+import ChipsFiltro from "../components/ChipsFiltro";
+import ModalFiltros from "../components/ModalFiltros";
+import { useAuth } from "../context/AuthContext";
+import { WebView } from 'react-native-webview';
 
 const { width } = Dimensions.get("window");
 
-// ── Chips de filtro rápido ────────────────────────────────────────
-const FILTROS_RAPIDOS = [
-  { key: "amueblado", label: "🛋 Amueblado" },
-  { key: "petfriendly", label: "🐾 Pet friendly" },
-  { key: "soloMujeres", label: "👩 Solo mujeres" },
-  { key: "internet", label: "📶 Internet" },
-  { key: "estacionamiento", label: "🚗 Estacionamiento" },
-  { key: "cocina", label: "🍳 Cocina" },
-];
+// ── Mapa ─────────────────────────────────────────────────
+const MapaLeaflet = ({ depas }: { depas: Departamento[] }) => {
+  // Solo depas con coordenadas
+  const depasConCoords = depas.filter(d => d.latitud && d.longitud);
 
-// ── Mapa simulado ─────────────────────────────────────────────────
-const MapaSimulado = ({ depas }: { depas: any[] }) => (
-  <View style={styles.mapaContainer}>
-    <Text style={styles.mapaTitulo}>📍 Mapa de departamentos</Text>
-    <View style={styles.mapaFondo}>
-      {depas.map((d, i) => (
-        <TouchableOpacity
-          key={d.id}
-          style={[
-            styles.mapaPin,
-            {
-              top: 30 + (i % 3) * 55,
-              left: 20 + (i * 70) % (width - 120),
-            },
-          ]}
-        >
-          <Text style={styles.mapaPinTexto}>${(d.precio / 1000).toFixed(1)}k</Text>
-        </TouchableOpacity>
-      ))}
-      <Text style={styles.mapaNotaTexto}>
-        * Mapa ilustrativo — se conectará a Google Maps
-      </Text>
-    </View>
-  </View>
-);
+  // Centro: promedio de coords, o GAM por defecto
+  const centro = depasConCoords.length > 0
+    ? {
+        lat: depasConCoords.reduce((s, d) => s + Number(d.latitud), 0) / depasConCoords.length,
+        lng: depasConCoords.reduce((s, d) => s + Number(d.longitud), 0) / depasConCoords.length,
+      }
+    : { lat: 19.4978, lng: -99.1269 }; // GAM, ESCOM
 
-// ── Tarjeta de departamento ───────────────────────────────────────
-const TarjetaDepa = ({ item }: { item: any }) => (
-  <TouchableOpacity style={styles.tarjeta} activeOpacity={0.85}>
-    <Image source={{ uri: item.imagen }} style={styles.tarjetaImagen} />
-    <View style={styles.tarjetaBadgeContainer}>
-      {item.tipo_renta === 'solo_mujeres' && (
-        <View style={[styles.badge, { backgroundColor: "#ff6b9d" }]}>
-          <Text style={styles.badgeTexto}>Solo mujeres</Text>
-        </View>
-      )}
-      {item.pet_friendly && (
-        <View style={[styles.badge, { backgroundColor: "#4caf50" }]}>
-          <Text style={styles.badgeTexto}>Pet friendly</Text>
-        </View>
-      )}
-    </View>
-    <View style={styles.tarjetaInfo}>
-      <Text style={styles.tarjetaTitulo} numberOfLines={1}>
-        {item.titulo}
-      </Text>
-      <Text style={styles.tarjetaColonia} numberOfLines={1}>
-        📍 {item.colonia}
-      </Text>
-      <View style={styles.tarjetaMetro}>
-        <Text style={styles.tarjetaMetroTexto}>
-          🚇 {item.metro_cercano}
-        </Text>
-      </View>
-      <View style={styles.tarjetaFooter}>
-        <Text style={styles.tarjetaPrecio}>
-          ${item.precio.toLocaleString()}/mes
-        </Text>
-        <View style={styles.tarjetaIconos}>
-          {item.amueblado && <Text style={styles.iconoSmall}>🛋</Text>}
-          {item.internet && <Text style={styles.iconoSmall}>📶</Text>}
-          {item.estacionamiento && <Text style={styles.iconoSmall}>🚗</Text>}
-        </View>
-      </View>
-    </View>
-  </TouchableOpacity>
-);
+  const marcadores = depasConCoords.map(d => ({
+    lat:    Number(d.latitud),
+    lng:    Number(d.longitud),
+    titulo: d.titulo,
+    precio: d.precio,
+    id:     d.id,
+  }));
 
-// ── Modal de filtros avanzados ────────────────────────────────────
-const ModalFiltros = ({
-  visible,
-  onClose,
-  filtros,
-  setFiltros,
-  rango,
-  setRango,
-}: any) => (
-  <Modal visible={visible} animationType="slide" transparent>
-    <View style={styles.modalOverlay}>
-      <View style={styles.modalContenido}>
-        <Text style={styles.modalTitulo}>Filtros</Text>
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body, #map { width: 100%; height: 100%; }
+        .pin-label {
+          background: #ec1f1f;
+          color: #fff;
+          font-weight: 800;
+          font-size: 12px;
+          padding: 4px 8px;
+          border-radius: 10px;
+          border: 2px solid #fff;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+          white-space: nowrap;
+          min-width: 45px;
+          max-width: 180px;
+        }
+      </style>
+    </head>
+    <body>
+      <div id="map"></div>
+      <script>
+        var map = L.map('map', { zoomControl: true }).setView(
+          [${centro.lat}, ${centro.lng}], 14
+        );
 
-        <Text style={styles.modalSeccion}>Rango de precio</Text>
-        <Text style={styles.modalRangoTexto}>
-          $3,000 — ${rango.toLocaleString()}
-        </Text>
-        <View style={styles.rangoSliderFake}>
-          {[3000, 4500, 6000, 7500, 9000, 10000].map((val) => (
-            <TouchableOpacity
-              key={val}
-              onPress={() => setRango(val)}
-              style={[
-                styles.rangoBtn,
-                rango === val && styles.rangoBtnActivo,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.rangoBtnTexto,
-                  rango === val && styles.rangoBtnTextoActivo,
-                ]}
-              >
-                ${(val / 1000).toFixed(1)}k
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap',
+          maxZoom: 19
+        }).addTo(map);
 
-        <Text style={styles.modalSeccion}>Tipo de renta</Text>
-        {[
-          { key: "soloMujeres", label: "Solo mujeres" },
-          { key: "soloHombres", label: "Solo hombres" },
-          { key: "mixto", label: "Mixto" },
-        ].map((op) => (
-          <View key={op.key} style={styles.switchRow}>
-            <Text style={styles.switchLabel}>{op.label}</Text>
-            <Switch
-              value={filtros[op.key] || false}
-              onValueChange={(v) => setFiltros({ ...filtros, [op.key]: v })}
-              trackColor={{ true: "#e63946" }}
-            />
-          </View>
-        ))}
+        var marcadores = ${JSON.stringify(marcadores)};
 
-        <Text style={styles.modalSeccion}>Características</Text>
-        {[
-          { key: "amueblado", label: "🛋 Amueblado" },
-          { key: "petfriendly", label: "🐾 Pet friendly" },
-          { key: "internet", label: "📶 Internet incluido" },
-          { key: "estacionamiento", label: "🚗 Estacionamiento" },
-          { key: "cocina", label: "🍳 Cocina" },
-        ].map((op) => (
-          <View key={op.key} style={styles.switchRow}>
-            <Text style={styles.switchLabel}>{op.label}</Text>
-            <Switch
-              value={filtros[op.key] || false}
-              onValueChange={(v) => setFiltros({ ...filtros, [op.key]: v })}
-              trackColor={{ true: "#e63946" }}
-            />
-          </View>
-        ))}
-
-        <TouchableOpacity style={styles.modalBoton} onPress={onClose}>
-          <Text style={styles.modalBotonTexto}>Aplicar filtros</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  </Modal>
-);
-
-// ── Pantalla principal ────────────────────────────────────────────
-export default function HomeScreen() {
-  const [depas, setDepas] = useState<any[]>([]);
-
-  useEffect(() => {
-    obtenerDepartamentos().then(setDepas);
-  }, []);
-  
-  const [busqueda, setBusqueda] = useState("");
-  const [chipActivo, setChipActivo] = useState<string | null>(null);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [filtros, setFiltros] = useState<Record<string, boolean>>({});
-  const [rangoMax, setRangoMax] = useState(10000);
-  const carouselRef = useRef<FlatList>(null);
-
-  const depasFiltrados = depas.filter((d) => {
-    const matchBusqueda =
-      busqueda === "" ||
-      d.titulo.toLowerCase().includes(busqueda.toLowerCase()) ||
-      d.colonia.toLowerCase().includes(busqueda.toLowerCase());
-    const matchChip = chipActivo ? (d as any)[chipActivo] === true : true;
-    const matchPrecio = d.precio <= rangoMax;
-    const matchFiltros = Object.entries(filtros).every(
-      ([k, v]) => !v || (d as any)[k] === true
-    );
-    return matchBusqueda && matchChip && matchPrecio && matchFiltros;
-  });
+        marcadores.forEach(function(m) {
+          var icono = L.divIcon({
+            className: '',
+            html: '<div class="pin-label">$' + (m.precio/1000).toFixed(1) + 'k</div>',
+            iconAnchor: [20, 10],
+          });
+          L.marker([m.lat, m.lng], { icon: icono })
+            .addTo(map)
+            .bindPopup('<b>' + m.titulo + '</b><br>$' + m.precio.toLocaleString() + '/mes')
+            .on('click', function() {
+              window.ReactNativeWebView.postMessage(String(m.id));
+            });
+        });
+      </script>
+    </body>
+    </html>
+  `;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.saludo}>Hola, estudiante 👋</Text>
-            <Text style={styles.subtitulo}>Encuentra tu depa en CDMX</Text>
-          </View>
-          <TouchableOpacity style={styles.avatarBtn}>
-            <Text style={styles.avatarTexto}>RF</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Barra de búsqueda */}
-        <View style={styles.searchRow}>
-          <View style={styles.searchBox}>
-            <Text style={styles.searchIcon}>🔍</Text>
-            <TextInput
-              placeholder="Colonia, alcaldía o metro..."
-              placeholderTextColor="#aaa"
-              style={styles.searchInput}
-              value={busqueda}
-              onChangeText={setBusqueda}
-            />
-          </View>
-          <TouchableOpacity
-            style={styles.filtroBtn}
-            onPress={() => setModalVisible(true)}
-          >
-            <Text style={styles.filtroBtnTexto}>⚙️</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Chips de filtro rápido */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.chipsScroll}
-          contentContainerStyle={styles.chipsContent}
-        >
-          {FILTROS_RAPIDOS.map((f) => (
-            <TouchableOpacity
-              key={f.key}
-              style={[
-                styles.chip,
-                chipActivo === f.key && styles.chipActivo,
-              ]}
-              onPress={() =>
-                setChipActivo(chipActivo === f.key ? null : f.key)
-              }
-            >
-              <Text
-                style={[
-                  styles.chipTexto,
-                  chipActivo === f.key && styles.chipTextoActivo,
-                ]}
-              >
-                {f.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {/* Carrusel de anuncios destacados */}
-        <Text style={styles.seccionTitulo}>✨ Destacados</Text>
-        <FlatList
-          ref={carouselRef}
-          data={depas}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={(i) => i.id}
-          renderItem={({ item }) => (
-            <TouchableOpacity style={styles.carouselCard} activeOpacity={0.9}>
-              <Image
-                source={{ uri: item.imagen }}
-                style={styles.carouselImagen}
-              />
-              <View style={styles.carouselOverlay}>
-                <Text style={styles.carouselTitulo}>{item.titulo}</Text>
-                <Text style={styles.carouselPrecio}>
-                  ${item.precio.toLocaleString()}/mes
-                </Text>
-              </View>
-            </TouchableOpacity>
-          )}
-          contentContainerStyle={{ paddingHorizontal: 20 }}
-          snapToInterval={width - 32}
-          decelerationRate="fast"
-        />
-
-        {/* Mapa simulado */}
-        <MapaSimulado depas={depasFiltrados} />
-
-        {/* Lista de departamentos */}
-        <View style={styles.listaHeader}>
-          <Text style={styles.seccionTitulo}>🏠 Departamentos</Text>
-          <Text style={styles.listaConteo}>
-            {depasFiltrados.length} resultados
-          </Text>
-        </View>
-
-        {depasFiltrados.length === 0 ? (
-          <View style={styles.vacio}>
-            <Text style={styles.vacioTexto}>
-              😕 No hay resultados con esos filtros
+    <View style={styles.mapaContainer}>
+      <Text style={styles.seccionTitulo}>📍 Mapa de departamentos</Text>
+      <View style={styles.mapaFondo}>
+        {depasConCoords.length === 0 ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <Text style={{ color: '#999', fontSize: 13 }}>
+              Aún no hay departamentos con ubicación
             </Text>
           </View>
         ) : (
-          depasFiltrados.map((item) => (
-            <TarjetaDepa key={item.id} item={item} />
-          ))
+          <WebView
+            source={{ html }}
+            style={{ flex: 1, borderRadius: 18 }}
+            onMessage={(e) => router.push(`/departamento/${e.nativeEvent.data}` as any)}
+            scrollEnabled={false}
+            javaScriptEnabled
+          />
         )}
+      </View>
+    </View>
+  );
+};
+
+// ── Tarjeta de departamento ───────────────────────────────────────
+const TarjetaDepa = ({ item }: { item: Departamento }) => {
+  const badges = [];
+
+  if (item.tipo_renta === "solo_mujeres") {
+    badges.push({
+      texto: "Solo mujeres",
+      color: "#ff6b9d",
+    });
+  }
+
+  if (item.tipo_renta === "solo_hombres") {
+    badges.push({
+      texto: "Solo hombres",
+      color: "#4a90e2",
+    });
+  }
+
+  if (item.pet_friendly) {
+    badges.push({
+      texto: "Pet friendly",
+      color: "#4caf50",
+    });
+  }
+
+  if (item.amueblado) {
+    badges.push({
+      texto: "Amueblado",
+      color: "#ff9800",
+    });
+  }
+
+  if (item.internet) {
+    badges.push({
+      texto: "Internet",
+      color: "#7b61ff",
+    });
+  }
+
+  if (item.estacionamiento) {
+    badges.push({
+      texto: "Parking",
+      color: "#607d8b",
+    });
+  }
+
+  const visibles = badges.slice(0, 2);
+  const extras = badges.length - 2;
+
+  return (
+    <TouchableOpacity
+      style={styles.tarjeta}
+      activeOpacity={0.85}
+      onPress={() => router.push(`/departamento/${item.id}`)}
+    >
+      <Image source={{ uri: item.imagen_principal }} style={styles.tarjetaImagen} />
+
+      <View style={styles.tarjetaBadgeContainer}>
+        {visibles.map((b, i) => (
+          <View
+            key={i}
+            style={[
+              styles.badge,
+              { backgroundColor: b.color },
+            ]}
+          >
+            <Text style={styles.badgeTexto}>
+              {b.texto}
+            </Text>
+          </View>
+        ))}
+
+        {extras > 0 && (
+          <View
+            style={[
+              styles.badge,
+              { backgroundColor: "#444" },
+            ]}
+          >
+            <Text style={styles.badgeTexto}>
+              +{extras}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      <View style={styles.tarjetaInfo}>
+        <Text style={styles.tarjetaTitulo} numberOfLines={1}>
+          {item.titulo}
+        </Text>
+
+        <Text style={styles.tarjetaColonia} numberOfLines={1}>
+          📍 {item.colonia}
+        </Text>
+
+        <Text style={styles.tarjetaMetro}>
+          🚇 {item.metro_cercano}
+        </Text>
+
+        <View style={styles.tarjetaFooter}>
+          <Text style={styles.tarjetaPrecio}>
+            ${item.precio.toLocaleString()}/mes
+          </Text>
+
+          <View style={styles.tarjetaIconos}>
+            {item.amueblado && (
+              <Text style={styles.iconoSmall}>🛋</Text>
+            )}
+            {item.internet && (
+              <Text style={styles.iconoSmall}>🛜</Text>
+            )}
+            {item.estacionamiento && (
+              <Text style={styles.iconoSmall}>🚗</Text>
+            )}
+          </View>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+};
+
+// ── Pantalla principal ────────────────────────────────────────────
+export default function HomeScreen() {
+  const [depas, setDepas] = useState<Departamento[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [modalVisible, setModalVisible] = useState(false);
+  const carouselRef = useRef<FlatList>(null);
+  const { usuario } = useAuth();
+  const { busqueda, chipActivo } = useFiltros();
+
+  useEffect(() => {
+    obtenerDepartamentos()
+      .then(data => {
+        console.log("Departamentos recibidos:", data); // ← agrega esto temporalmente
+        setDepas(data);
+      })
+      .catch(err => console.error("Error cargando depas:", err))  // ← nuevo
+      .finally(() => setCargando(false));
+  }, []);
+
+  // Navega a search cuando el usuario escribe o activa un chip
+  useEffect(() => {
+    if (busqueda.trim().length > 0 || chipActivo !== null) {
+      router.push("/search" as any);
+    }
+  }, [busqueda, chipActivo]);
+
+  return (
+    <SafeAreaView style={styles.container}>
+
+    {/* ── Top Bar ── */}
+      <View style={styles.topBar}>
+        <View style={styles.topLeft}>
+          <Text style={styles.texto}>RentaFácil💙</Text>
+        </View>
+        <View style={styles.topLogos}>
+          <TouchableOpacity onPress={() => Linking.openURL("https://www.ipn.mx")}>
+            <View style={styles.logoBadge}>
+              <Text style={styles.logoTexto}>IPN</Text>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => Linking.openURL("https://www.escom.ipn.mx")}>
+            <View style={[styles.logoBadge, { backgroundColor: "#003366" }]}>
+              <Text style={styles.logoTexto}>ESCOM</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false}>
+
+        {/* Header */}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.saludo}>Hola, {usuario?.nombres ?? "estudiante"} 👋</Text>
+            <Text style={styles.subtitulo}>Encuentra tu depa en CDMX</Text>
+          </View>
+          <TouchableOpacity style={styles.avatarBtn} onPress={() => router.push("/usuarios/perfil")}>
+            <Text style={styles.avatarTexto}>{getInitials(usuario)}</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Búsqueda + filtros */}
+        <BusquedaBar onPressFiltros={() => setModalVisible(true)} />
+
+        {/* Chips */}
+        <ChipsFiltro />
+
+        {/* Carrusel destacados */}
+        <Text style={styles.seccionTitulo}>✨ Destacados</Text>
+        {cargando ? (
+          <View style={styles.cargandoBox}>
+            <Text style={styles.cargandoTexto}>Cargando departamentos...</Text>
+          </View>
+        ) : (
+          <FlatList
+            ref={carouselRef}
+            data={depas}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(item) => String(item.id)}
+            renderItem={({ item }) => {
+            const badges = [];
+
+            if (item.tipo_renta === "solo_mujeres") {
+              badges.push({
+                texto: "Solo mujeres",
+                color: "#ff6b9d",
+              });
+            }
+
+            if (item.tipo_renta === "solo_hombres") {
+              badges.push({
+                texto: "Solo hombres",
+                color: "#4a90e2",
+              });
+            }
+
+            if (item.pet_friendly) {
+              badges.push({
+                texto: "Pet friendly",
+                color: "#4caf50",
+              });
+            }
+
+            if (item.amueblado) {
+              badges.push({
+                texto: "Amueblado",
+                color: "#ff9800",
+              });
+            }
+
+            if (item.internet) {
+              badges.push({
+                texto: "Internet",
+                color: "#7b61ff",
+              });
+            }
+
+            if (item.estacionamiento) {
+              badges.push({
+                texto: "Parking",
+                color: "#607d8b",
+              });
+            }
+
+            const visibles = badges.slice(0, 2);
+            const extras = badges.length - 2;
+
+            return (
+              <TouchableOpacity
+                style={styles.carouselCard}
+                activeOpacity={0.9}
+                onPress={() => router.push(`/departamento/${item.id}`)}
+              >
+                <Image
+                  source={{ uri: item.imagen_principal }}
+                  style={styles.carouselImagen}
+                />
+
+                <View style={styles.carouselBadgeContainer}>
+                  {visibles.map((b, i) => (
+                    <View
+                      key={i}
+                      style={[
+                        styles.carouselBadge,
+                        { backgroundColor: b.color },
+                      ]}
+                    >
+                      <Text style={styles.carouselBadgeTexto}>
+                        {b.texto}
+                      </Text>
+                    </View>
+                  ))}
+
+                  {extras > 0 && (
+                    <View
+                      style={[
+                        styles.carouselBadge,
+                        { backgroundColor: "#444" },
+                      ]}
+                    >
+                      <Text style={styles.carouselBadgeTexto}>
+                        +{extras}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                <View style={styles.carouselOverlay}>
+                  <Text style={styles.carouselTitulo}>
+                    {item.titulo}
+                  </Text>
+
+                  <Text style={styles.carouselPrecio}>
+                    ${item.precio.toLocaleString()}/mes
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          }}
+            contentContainerStyle={{ paddingHorizontal: 20 }}
+            snapToInterval={width - 56}
+            decelerationRate="fast"
+          />
+        )}
+
+        {/* Mapa simulado */}
+        <MapaLeaflet depas={depas} />
+
+        {/* Ver todos */}
+        <TouchableOpacity
+          style={styles.verTodosBtn}
+          onPress={() => router.push("/search" as any)}
+        >
+          <Text style={styles.verTodosTexto}>Ver todos los departamentos →</Text>
+        </TouchableOpacity>
 
         <View style={{ height: 30 }} />
       </ScrollView>
@@ -326,20 +449,28 @@ export default function HomeScreen() {
       <ModalFiltros
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
-        filtros={filtros}
-        setFiltros={setFiltros}
-        rango={rangoMax}
-        setRango={setRangoMax}
       />
     </SafeAreaView>
   );
+}
+
+function getInitials(usuario: any) {
+  if (!usuario) return 'RF';
+  const nombres = (usuario.nombres || '').trim();
+  const apellidos = (usuario.apellidos || '').trim();
+  if (nombres || apellidos) {
+    const first = nombres ? nombres.split(' ')[0][0] : '';
+    const last = apellidos ? apellidos.split(' ')[0][0] : '';
+    return `${(first || '').toUpperCase()}${(last || '').toUpperCase()}` || (usuario.nombre_usuario ? usuario.nombre_usuario.slice(0,2).toUpperCase() : 'RF');
+  }
+  if (usuario.nombre_usuario) return usuario.nombre_usuario.slice(0,2).toUpperCase();
+  return 'RF';
 }
 
 // ── Estilos ───────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f7f4f0" },
 
-  // Header
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -360,57 +491,6 @@ const styles = StyleSheet.create({
   },
   avatarTexto: { color: "#fff", fontWeight: "800", fontSize: 14 },
 
-  // Búsqueda
-  searchRow: {
-    flexDirection: "row",
-    paddingHorizontal: 20,
-    marginTop: 12,
-    gap: 10,
-  },
-  searchBox: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  searchIcon: { fontSize: 16, marginRight: 8 },
-  searchInput: { flex: 1, fontSize: 15, color: "#1a1a1a" },
-  filtroBtn: {
-    backgroundColor: "#e63946",
-    borderRadius: 14,
-    width: 48,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#e63946",
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  filtroBtnTexto: { fontSize: 20 },
-
-  // Chips
-  chipsScroll: { marginTop: 14 },
-  chipsContent: { paddingHorizontal: 20, gap: 8 },
-  chip: {
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderWidth: 1.5,
-    borderColor: "#e0dcd8",
-  },
-  chipActivo: { backgroundColor: "#e63946", borderColor: "#e63946" },
-  chipTexto: { fontSize: 13, color: "#555", fontWeight: "600" },
-  chipTextoActivo: { color: "#fff" },
-
-  // Sección
   seccionTitulo: {
     fontSize: 17,
     fontWeight: "800",
@@ -420,7 +500,16 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
 
-  // Carrusel
+  cargandoBox: {
+    height: 180,
+    justifyContent: "center",
+    alignItems: "center",
+    marginHorizontal: 20,
+    backgroundColor: "#fff",
+    borderRadius: 18,
+  },
+  cargandoTexto: { color: "#aaa", fontSize: 14 },
+
   carouselCard: {
     width: width - 56,
     marginRight: 12,
@@ -429,6 +518,26 @@ const styles = StyleSheet.create({
     backgroundColor: "#ddd",
   },
   carouselImagen: { width: "100%", height: 180 },
+  carouselBadgeContainer: {
+    position: "absolute",
+    top: 12,
+    left: 12,
+    flexDirection: "row",
+    zIndex: 10,
+  },
+
+  carouselBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    marginRight: 6,
+  },
+
+  carouselBadgeTexto: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "700",
+  },
   carouselOverlay: {
     position: "absolute",
     bottom: 0,
@@ -440,9 +549,7 @@ const styles = StyleSheet.create({
   carouselTitulo: { color: "#fff", fontWeight: "700", fontSize: 15 },
   carouselPrecio: { color: "#ffd166", fontWeight: "800", fontSize: 14, marginTop: 2 },
 
-  // Mapa
-  mapaContainer: { marginHorizontal: 20, marginTop: 20 },
-  mapaTitulo: { fontSize: 17, fontWeight: "800", color: "#1a1a1a", marginBottom: 10 },
+  mapaContainer: { marginHorizontal: 20, marginTop: 8 },
   mapaFondo: {
     height: 180,
     backgroundColor: "#d4e8c2",
@@ -454,16 +561,14 @@ const styles = StyleSheet.create({
   },
   mapaPin: {
     position: "absolute",
-    backgroundColor: "#e63946",
+    backgroundColor: "#65d66e",
     borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 5,
-    shadowColor: "#e63946",
-    shadowOpacity: 0.5,
-    shadowRadius: 6,
     elevation: 4,
+    maxWidth: 200,
   },
-  mapaPinTexto: { color: "#fff", fontWeight: "800", fontSize: 12 },
+  mapaPinTexto: { color: "#ff0000", fontWeight: "800", fontSize: 12, flexWrap: "wrap", },
   mapaNotaTexto: {
     position: "absolute",
     bottom: 8,
@@ -472,16 +577,22 @@ const styles = StyleSheet.create({
     color: "#666",
   },
 
-  // Lista
-  listaHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  verTodosBtn: {
+    marginHorizontal: 20,
+    marginTop: 20,
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    padding: 16,
     alignItems: "center",
-    paddingRight: 20,
+    borderWidth: 1.5,
+    borderColor: "#e63946",
   },
-  listaConteo: { fontSize: 13, color: "#888", fontWeight: "600" },
+  verTodosTexto: {
+    color: "#e63946",
+    fontWeight: "700",
+    fontSize: 15,
+  },
 
-  // Tarjeta
   tarjeta: {
     marginHorizontal: 20,
     marginBottom: 16,
@@ -499,19 +610,21 @@ const styles = StyleSheet.create({
     top: 12,
     left: 12,
     flexDirection: "row",
-    gap: 6,
+    alignItems: "center",
+    flexWrap: "nowrap",
+    zIndex: 10,
   },
   badge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 10,
+    marginRight: 6,
   },
-  badgeTexto: { color: "#fff", fontSize: 11, fontWeight: "700" },
+ badgeTexto: { color: "#fff", fontSize: 11, fontWeight: "700" },
   tarjetaInfo: { padding: 14 },
   tarjetaTitulo: { fontSize: 16, fontWeight: "800", color: "#1a1a1a" },
   tarjetaColonia: { fontSize: 13, color: "#777", marginTop: 4 },
-  tarjetaMetro: { marginTop: 4 },
-  tarjetaMetroTexto: { fontSize: 12, color: "#555" },
+  tarjetaMetro: { fontSize: 12, color: "#555", marginTop: 4 },
   tarjetaFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -522,60 +635,26 @@ const styles = StyleSheet.create({
   tarjetaIconos: { flexDirection: "row", gap: 4 },
   iconoSmall: { fontSize: 16 },
 
-  // Vacío
-  vacio: { alignItems: "center", padding: 40 },
-  vacioTexto: { fontSize: 15, color: "#aaa" },
-
-  // Modal
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "flex-end",
-  },
-  modalContenido: {
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    maxHeight: "85%",
-  },
-  modalTitulo: { fontSize: 20, fontWeight: "900", color: "#1a1a1a", marginBottom: 20 },
-  modalSeccion: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#888",
-    marginTop: 16,
-    marginBottom: 10,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  modalRangoTexto: { fontSize: 22, fontWeight: "900", color: "#e63946", marginBottom: 10 },
-  rangoSliderFake: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  rangoBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: "#e0dcd8",
-  },
-  rangoBtnActivo: { backgroundColor: "#e63946", borderColor: "#e63946" },
-  rangoBtnTexto: { fontSize: 13, color: "#555", fontWeight: "600" },
-  rangoBtnTextoActivo: { color: "#fff" },
-  switchRow: {
+  topBar: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0ece8",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: "#f7f4f0",
   },
-  switchLabel: { fontSize: 15, color: "#333" },
-  modalBoton: {
-    backgroundColor: "#e63946",
-    borderRadius: 16,
-    padding: 16,
-    alignItems: "center",
-    marginTop: 24,
+  topLeft: {
+    justifyContent: "center",
   },
-  modalBotonTexto: { color: "#fff", fontWeight: "800", fontSize: 16 },
+  texto: { color: "#000000", fontWeight: "800", fontSize: 20, letterSpacing: 0.5 },
+  topLogos:  { flexDirection: "row", gap: 6, alignItems: "center" },
+  logoBadge: {
+    backgroundColor: "#8B0000",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  logoTexto: { color: "#fff", fontWeight: "800", fontSize: 12, letterSpacing: 0.5 },
+  separador: { height: 1, backgroundColor: "#e0dcd8" },
+
 });

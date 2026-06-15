@@ -1,4 +1,6 @@
 from django.db import models
+from django.conf import settings
+
 
 class Departamento(models.Model):
     TIPO_RENTA_CHOICES = [
@@ -7,28 +9,205 @@ class Departamento(models.Model):
         ('mixto', 'Mixto'),
     ]
 
-    titulo         = models.CharField(max_length=200)
-    descripcion    = models.TextField(blank=True)
-    precio         = models.IntegerField()
-    colonia        = models.CharField(max_length=100)
-    alcaldia       = models.CharField(max_length=100)
-    direccion      = models.CharField(max_length=255)
-    tipo_renta     = models.CharField(max_length=20, choices=TIPO_RENTA_CHOICES, default='mixto')
-    cuartos        = models.IntegerField(default=1)
-    amueblado      = models.BooleanField(default=False)
-    pet_friendly   = models.BooleanField(default=False)
-    internet       = models.BooleanField(default=False)
-    estacionamiento= models.BooleanField(default=False)
-    cocina         = models.BooleanField(default=False)
-    metro_cercano  = models.CharField(max_length=100, blank=True)
-    activo         = models.BooleanField(default=True)
+    titulo = models.CharField(max_length=200)
+    descripcion = models.TextField(blank=True)
+
+    precio = models.PositiveIntegerField()
+
+    colonia = models.CharField(max_length=100)
+    alcaldia = models.CharField(max_length=100)
+    direccion = models.CharField(max_length=255)
+    latitud  = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitud = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+
+    tipo_renta = models.CharField(
+        max_length=20,
+        choices=TIPO_RENTA_CHOICES,
+        default='mixto'
+    )
+
+    cuartos = models.PositiveIntegerField(default=1)
+
+    amueblado = models.BooleanField(default=False)
+    pet_friendly = models.BooleanField(default=False)
+    internet = models.BooleanField(default=False)
+    estacionamiento = models.BooleanField(default=False)
+    cocina = models.BooleanField(default=False)
+
+    metro_cercano = models.CharField(max_length=100, blank=True)
+
+    imagen_principal = models.ImageField(
+        upload_to='departamentos/principal/',
+        null=True,
+        blank=True
+    )
+
+    arrendador = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='departamentos',
+        null=True,
+        blank=True
+    )
+
+    inquilino = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name='renta_actual',
+        null=True,
+        blank=True
+    )
+
+    disponible = models.BooleanField(default=True)
+
+    rentado_hasta = models.DateField(null=True, blank=True)
+
+    vistas_mes = models.PositiveIntegerField(default=0)
+
+    calificacion = models.DecimalField(
+        max_digits=3,
+        decimal_places=1,
+        null=True,
+        blank=True
+    )
+
+    activo = models.BooleanField(default=True)
+
     fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table     = 'departamentos'
-        ordering     = ['-fecha_creacion']
+        db_table = 'departamentos'
+        ordering = ['-fecha_creacion']
         verbose_name = 'Departamento'
         verbose_name_plural = 'Departamentos'
 
     def __str__(self):
-        return f"{self.titulo} - ${self.precio}/mes"
+        return f'{self.titulo} - ${self.precio}/mes'
+
+    def total_imagenes(self):
+        """Cuenta imagen principal + galería."""
+        return (1 if self.imagen_principal else 0) + self.galeria.count()
+
+
+class ImagenDepartamento(models.Model):
+    departamento = models.ForeignKey(
+        Departamento,
+        on_delete=models.CASCADE,
+        related_name='galeria'
+    )
+    imagen = models.ImageField(upload_to='departamentos/galeria/')
+    orden  = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        db_table = 'departamentos_imagenes'
+        ordering = ['orden']
+        verbose_name = 'Imagen de departamento'
+        verbose_name_plural = 'Imágenes de departamento'
+
+    def __str__(self):
+        return f'Imagen {self.orden} — {self.departamento.titulo}'
+
+
+class Favorito(models.Model):
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="favoritos"
+    )
+    departamento = models.ForeignKey(
+        Departamento,
+        on_delete=models.CASCADE,
+        related_name="favoritos"
+    )
+    fecha = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("usuario", "departamento")
+
+    def __str__(self):
+        return f"{self.usuario} → {self.departamento}"
+    
+class Calificacion(models.Model):
+
+    departamento = models.ForeignKey(
+        'Departamento',
+        on_delete=models.CASCADE,
+        related_name='calificaciones'
+    )
+
+    arrendatario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='calificaciones_realizadas'
+    )
+
+    calificacion = models.PositiveSmallIntegerField()
+
+    comentario = models.TextField(
+        blank=True,
+        null=True
+    )
+
+    aspectos_positivos = models.JSONField(
+        default=list,
+        blank=True
+    )
+
+    fecha = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    class Meta:
+        db_table = 'calificaciones'
+        unique_together = (
+            'departamento',
+            'arrendatario'
+        )
+
+    def __str__(self):
+        return f"{self.arrendatario} - {self.calificacion}★"
+    
+class Reporte(models.Model):
+
+    CATEGORIA_CHOICES = [
+        ('mantenimiento', 'Mantenimiento'),
+        ('ruido', 'Ruido excesivo'),
+        ('seguridad', 'Seguridad'),
+        ('limpieza', 'Limpieza'),
+        ('servicios', 'Servicios'),
+        ('otro', 'Otro'),
+    ]
+
+    departamento = models.ForeignKey(
+        'Departamento',
+        on_delete=models.CASCADE,
+        related_name='reportes'
+    )
+
+    arrendatario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='reportes_realizados'
+    )
+
+    categoria = models.CharField(
+        max_length=20,
+        choices=CATEGORIA_CHOICES
+    )
+
+    descripcion = models.TextField()
+
+    revisado = models.BooleanField(
+        default=False
+    )
+
+    fecha = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    class Meta:
+        db_table = 'reportes'
+
+    def __str__(self):
+        return f"{self.arrendatario} - {self.categoria}"
