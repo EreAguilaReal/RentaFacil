@@ -18,4 +18,4 @@ services:
 databases:
   - name: rentafacil-db
     databaseName: rentafacil_db
-    user: postgres
+    user: rentafacil_user
