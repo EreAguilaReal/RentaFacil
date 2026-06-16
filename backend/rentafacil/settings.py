@@ -94,3 +94,4 @@ AUTH_USER_MODEL = 'usuarios.Usuario'
 CORS_ALLOW_ALL_ORIGINS = True
 MEDIA_URL  = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
+CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',')
